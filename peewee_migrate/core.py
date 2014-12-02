@@ -52,15 +52,16 @@ class Router(object):
         self.migrate_dir = migrate_dir
 
         self.db = options.get('DATABASE')
-        if not isinstance(self.db, (SqliteDatabase, MySQLDatabase, PostgresqlDatabase)):
+        if not isinstance(
+                self.db, (SqliteDatabase, MySQLDatabase, PostgresqlDatabase)) and self.db:
             self.db = connect(self.db)
 
-        self.proxy.initialize(self.db)
-
         try:
+            assert self.db
+            self.proxy.initialize(self.db)
             assert self.proxy.database
             MigrateHistory.create_table()
-        except AttributeError:
+        except (AttributeError, AssertionError):
             LOGGER.error("Invalid database: %s", self.db)
             sys.exit(1)
         except Exception:
