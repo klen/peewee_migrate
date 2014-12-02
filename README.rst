@@ -9,9 +9,6 @@ Peewee Migrate -- A simple migration engine for Peewee
 
 .. _documentation:
 
-**Docs are available at https://peewee_migrate.readthedocs.org/. Pull requests
-with documentation enhancements and/or fixes are awesome and most welcome.**
-
 .. _contents:
 
 .. contents::
