@@ -6,7 +6,7 @@
 # Package information
 # ===================
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __project__ = "peewee_migrate"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
