@@ -1,11 +1,8 @@
 #!/usr/bin/env python
-
+import re
 from os import path as op
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
 
 def _read(fname):
@@ -22,26 +19,6 @@ _version = re.search(r'^__version__\s*=\s*"(.*)"', _meta, re.M).group(1)
 install_requires = [
     l for l in _read('requirements.txt').split('\n')
     if l and not l.startswith('#')]
-
-tests_require = [
-    l for l in _read('requirements-tests.txt').split('\n')
-    if l and not l.startswith('#')]
-
-
-class __PyTest(TestCommand):
-
-    test_args = []
-    test_suite = True
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-        errno = pytest.main(self.test_args)
-        sys.exit(errno)
 
 setup(
     name=_project,
@@ -73,6 +50,4 @@ setup(
     packages=['peewee_migrate'],
     include_package_data=True,
     install_requires=install_requires,
-    tests_require=tests_require,
-    cmdclass={'test': __PyTest},
 )

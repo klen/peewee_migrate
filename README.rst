@@ -3,23 +3,9 @@ Peewee Migrate
 
 .. _description:
 
-Peewee Migrate -- Short description.
+Peewee Migrate -- A simple migration engine for Peewee
 
 .. _badges:
-
-.. image:: https://secure.travis-ci.org/klen/peewee_migrate.png?branch=develop
-    :target: http://travis-ci.org/klen/peewee_migrate
-    :alt: Build Status
-
-.. image:: https://coveralls.io/repos//peewee_migrate/badge.png?branch=develop
-    :target: https://coveralls.io/r/klen/peewee_migrate
-    :alt: Coverals
-
-.. image:: https://pypip.in/d/peewee_migrate/badge.png
-    :target: https://pypi.python.org/pypi/peewee_migrate
-
-.. image:: https://badge.fury.io/py/peewee_migrate.png
-    :target: http://badge.fury.io/py/peewee_migrate
 
 .. _documentation:
 
