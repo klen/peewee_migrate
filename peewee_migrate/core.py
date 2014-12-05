@@ -178,7 +178,7 @@ class Migrator(object):
         return operation.run()
 
     def add_index(self, table, columns, unique=False):
-        operation = self.migrator.add_index(table, index_name)
+        operation = self.migrator.add_index(table, columns, unique=unique)
         return operation.run()
 
     def drop_index(self, table, index_name):
