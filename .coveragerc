@@ -1,0 +1,6 @@
+[report]
+source=peewee_migrate
+
+[run]
+source=peewee_migrate
+

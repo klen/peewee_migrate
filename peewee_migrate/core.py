@@ -82,15 +82,25 @@ class Router(object):
 
     def run(self, name=None):
         """ Run migrations. """
+
+        LOGGER.info('Start migrations')
+
         migrator = Migrator(self.db)
         if name:
             return self.run_one(name, migrator)
 
-        for name in self.diff:
+        diff = self.diff
+        for name in diff:
             self.run_one(name, migrator)
+
+        if not diff:
+            LOGGER.info('Nothing to migrate')
 
     def run_one(self, name, migrator):
         """ Run a migration. """
+
+        LOGGER.info('Run "%s"', name)
+
         try:
             with open(op.join(self.migrate_dir, name + '.py')) as f:
                 with self.db.transaction():
@@ -108,11 +118,16 @@ class Router(object):
             LOGGER.error(exc)
 
     def create(self, name):
+        """ Create a migration. """
+
+        LOGGER.info('Create a migration "%s"', name)
+
         num = len(self.fs_migrations)
         prefix = '{:03}_'.format(num)
         name = prefix + name + '.py'
         copy(MIGRATE_TEMPLATE, op.join(self.migrate_dir, name))
-        LOGGER.info('Created: %s', name)
+
+        LOGGER.info('Migration has created %s', name)
 
 
 class MigrateHistory(Model):
