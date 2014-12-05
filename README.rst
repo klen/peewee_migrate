@@ -14,7 +14,7 @@ Peewee Migrate -- A simple migration engine for Peewee
 .. image:: http://img.shields.io/coveralls/klen/peewee_migrate.svg?style=flat-square
     :target: https://coveralls.io/r/klen/pewee_migrate
     :alt: Coverals
-    j
+
 .. image:: http://img.shields.io/pypi/v/peewee_migrate.svg?style=flat-square
     :target: https://pypi.python.org/pypi/peewee_migrate
     :alt: Version
