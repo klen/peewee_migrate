@@ -76,10 +76,3 @@ $(VIRTUALENV)/bin/py.test: $(VIRTUALENV) requirements-tests.txt
 
 .PHONY: t
 t: test
-
-.PHONY: doc
-doc: docs
-	@pip install sphinx
-	@pip install sphinx-pypi-upload
-	python setup.py build_sphinx --source-dir=docs/ --build-dir=docs/_build --all-files
-	python setup.py upload_sphinx --upload-dir=docs/_build/html

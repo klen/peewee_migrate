@@ -52,7 +52,68 @@ Installation
 Usage
 =====
 
-In progress.
+From shell
+----------
+
+Getting help: ::
+
+    $ pw_migrate --help
+
+    Usage: pw_migrate [OPTIONS] COMMAND [ARGS]...
+
+    Options:
+        --help  Show this message and exit.
+
+    Commands:
+        create   Create migration.
+        migrate  Run migrations.
+
+Create migration: ::
+
+    $ pw_migrate create --help
+
+    Usage: pw_migrate create [OPTIONS] NAME
+
+        Create migration.
+
+    Options:
+        --database TEXT   Database connection
+        --directory TEXT  Directory where migrations are stored
+        -v, --verbose
+        --help            Show this message and exit.
+
+Run migrations: ::
+
+    $ pw_migrate migrate --help
+
+    Usage: pw_migrate migrate [OPTIONS]
+
+        Run migrations.
+
+    Options:
+        --name TEXT       Select migration
+        --database TEXT   Database connection
+        --directory TEXT  Directory where migrations are stored
+        -v, --verbose
+        --help            Show this message and exit.
+
+From python
+-----------
+::
+
+    from peewee_migrate.core import Router
+
+    router = Router('migrations', DATABASE='sqlite:///test.db')
+
+    # Create migration
+    router.create('migration_name')
+
+    # Run migration/migrations
+    router.run('migration_name')
+
+    # Run all unapplied migrations
+    router.run()
+
 
 .. _bugtracker:
 

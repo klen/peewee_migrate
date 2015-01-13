@@ -1,7 +1,0 @@
-.. _quickstart:
-
-Quickstart
-==========
-
-.. contents::
-
