@@ -1,2 +1,2 @@
-peewee      == 2.4.3
+peewee      >= 2.4.3
 click       == 3.3

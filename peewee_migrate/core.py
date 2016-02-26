@@ -1,17 +1,20 @@
-from os import path as op, listdir as ls, makedirs as md
-from re import compile as re
-import sys
-from shutil import copy
+import datetime as dt
 import logging
+import sys
+from importlib import import_module
+from os import listdir as ls
+from os import makedirs as md
+from os import path as op
+from re import compile as re
+from shutil import copy
+
+from peewee import *  # noqa
 from playhouse.db_url import connect
 from playhouse.migrate import SchemaMigrator
-import datetime as dt
+
 from .utils import exec_in
 
-from peewee import * # noqa
-
-
-LOGGER = logging.getLogger()
+LOGGER = logging.getLogger('peewee_migrate')
 LOGGER.addHandler(logging.StreamHandler())
 MIGRATE_TEMPLATE = op.join(
     op.abspath(op.dirname(__file__)),
@@ -47,7 +50,7 @@ class Router(object):
                 if not key.startswith('_'):
                     options[key] = config[key]
         else:
-            LOGGER.warn('Configuration file `conf.py` didnt found in migration directory')
+            LOGGER.warn('Configuration file `conf.py` wasn\'t found in migration directory')
 
         self.migrate_dir = migrate_dir
 
@@ -128,6 +131,60 @@ class Router(object):
         copy(MIGRATE_TEMPLATE, op.join(self.migrate_dir, name))
 
         LOGGER.info('Migration has created %s', name)
+
+
+class ModuleRouter(Router):
+    """Replaces the file based router with a python module based one.
+        This is usually called from python so no config is loaded."""
+
+    def __init__(self, migrate_module, **options):
+
+        LOGGER.setLevel(options.get('LOGGING', 'WARNING'))
+
+        if isinstance(migrate_module, basestring):
+            migrate_module = import_module(migrate_module)
+
+        self.migrate_module = migrate_module
+
+        self.db = options.get('DATABASE')
+        if not isinstance(
+                self.db, (SqliteDatabase, MySQLDatabase, PostgresqlDatabase)) and self.db:
+            self.db = connect(self.db)
+
+        try:
+            assert self.db
+            self.proxy.initialize(self.db)
+            assert self.proxy.database
+            MigrateHistory.create_table()
+        except (AttributeError, AssertionError):
+            LOGGER.error("Invalid database: %s", self.db)
+            sys.exit(1)
+        except Exception:
+            pass
+
+    def run_one(self, name, migrator):
+        """ Run a migration. """
+
+        LOGGER.info('Run "%s"', name)
+
+        try:
+            migrate = getattr(self.migrate_module, name).migrate
+        except AttributeError:
+            raise ValueError('No migration exists with name %s on module %s' %
+                             (name, str(self.migrate_module)))
+
+        try:
+            with self.db.transaction():
+                logging.info('Start migration %s', name)
+
+                migrate(migrator, self.db)
+
+                MigrateHistory.create(name=name)
+                logging.info('Migrated %s', name)
+
+        except Exception as exc:
+            self.db.rollback()
+            LOGGER.error(exc)
 
 
 class MigrateHistory(Model):
