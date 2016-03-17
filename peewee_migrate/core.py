@@ -139,7 +139,10 @@ class ModuleRouter(Router):
 
     def __init__(self, migrate_module, **options):
 
-        LOGGER.setLevel(options.get('LOGGING', 'WARNING'))
+        if 'LOGGER' in options:
+            LOGGER = options.get('LOGGER')
+        else:
+            LOGGER.setLevel(options.get('LOGGING', 'WARNING'))
 
         if isinstance(migrate_module, basestring):
             migrate_module = import_module(migrate_module)
@@ -185,6 +188,7 @@ class ModuleRouter(Router):
         except Exception as exc:
             self.db.rollback()
             LOGGER.error(exc)
+            raise
 
 
 class MigrateHistory(Model):
