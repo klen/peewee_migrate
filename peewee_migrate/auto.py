@@ -1,5 +1,5 @@
 from playhouse.reflection import Column as VanilaColumn
-from peewee import PrimaryKeyField
+from peewee import PrimaryKeyField, ForeignKeyField, CharField
 
 INDENT = '    '
 NEWLINE = '\n' + INDENT
@@ -7,20 +7,43 @@ NEWLINE = '\n' + INDENT
 
 class Column(VanilaColumn):
 
-    def __init__(self, *args, **kwargs):
-        self.default = kwargs.pop('default', None)
-        super(Column, self).__init__(*args, **kwargs)
+    def __init__(self, field):
+        self.name = field.name
+        self.field_class = type(field)
+        self.nullable = field.null
+        self.primary_key = field.primary_key
+        self.db_column = field.db_column
+        self.index = field.index
+        self.unique = field.unique
+        self.params = {}
+        if field.default is not None and not callable(field.default):
+            self.params['default'] = field.default
+
+        if isinstance(field, CharField):
+            self.params['max_length'] = field.max_length
+
+        self.rel_model = None
+        self.related_name = None
+        self.to_field = None
+
+        if isinstance(field, ForeignKeyField):
+            self.rel_model = field.rel_model
+            self.related_name = field.related_name
 
     def get_field_parameters(self):
         params = super(Column, self).get_field_parameters()
-        if self.default is not None and not callable(self.default):
-            params['default'] = self.default
+        if self.is_foreign_key():
+            params['rel_model'] = self.rel_model.__name__
+            if self.related_name:
+                params['related_name'] = "'%s'" % self.related_name
+
+        params.update({k: repr(v) for k, v in self.params.items()})
         return params
 
     def get_field(self, space=' '):
         # Generate the field definition for this column.
         field_params = self.get_field_parameters()
-        param_str = ', '.join('%s=%s' % (k, repr(v))
+        param_str = ', '.join('%s=%s' % (k, v)
                               for k, v in sorted(field_params.items()))
         return '{name}{space}={space}pw.{classname}({params})'.format(
             name=self.name, space=space, classname=self.field_class.__name__, params=param_str)
@@ -110,16 +133,5 @@ def drop_fields(Model, *fields):
 
 
 def field_to_code(field, space=True):
-    col = Column(
-        field.name,
-        type(field),
-        field.db_field,
-        field.null,
-        field.primary_key,
-        field.db_column,
-        field.index,
-        field.unique,
-        default=field.default
-    )
-
+    col = Column(field)
     return col.get_field(' ' if space else '')
