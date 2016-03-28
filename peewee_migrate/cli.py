@@ -1,6 +1,7 @@
 """ CLI integration. """
 import os
 from types import StringTypes
+import sys
 
 import click
 from playhouse.db_url import connect
@@ -29,7 +30,11 @@ def get_router(directory, database, verbose=0):
 
     LOGGER.setLevel(logging_level)
 
-    return Router(database, migrate_dir=directory)
+    try:
+        return Router(database, migrate_dir=directory)
+    except RuntimeError as exc:
+        LOGGER.error(exc)
+        return sys.exit(1)
 
 
 @click.group()

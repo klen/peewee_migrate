@@ -25,3 +25,6 @@ def test_cli(tmpdir):
     result = runner.invoke(cli, [
         'rollback', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '001_test'])
     assert result.exit_code == -1
+
+    result = runner.invoke(cli, ['rollback', 'test'])
+    assert type(result.exception) == RuntimeError

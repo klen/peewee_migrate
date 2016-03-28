@@ -25,6 +25,8 @@ class BaseRouter(object):
     def __init__(self, database, logger=LOGGER):
         self.database = database
         self.logger = logger
+        if not isinstance(self.database, pw.Database):
+            raise RuntimeError('Invalid database: %s' % database)
 
     @cached_property
     def model(self):
