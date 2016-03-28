@@ -26,5 +26,3 @@ def migrate(migrator, database, **kwargs):
     > migrator.add_default(Model, field_name, default)
 
     """
-    migrator.add_fields(
-        'tag', created_at=pw.DateTimeField(null=True))

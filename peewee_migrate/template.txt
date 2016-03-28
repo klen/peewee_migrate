@@ -1,11 +1,4 @@
-"""Peewee migrations."""
-
-import datetime as dt
-import peewee as pw
-
-
-def migrate(migrator, database, **kwargs):
-    """Write your migrations here.
+"""Peewee migrations: ::
 
     > Model = migrator.orm['name']
 
@@ -25,6 +18,17 @@ def migrate(migrator, database, **kwargs):
     > migrator.drop_not_null(Model, field_name)
     > migrator.add_default(Model, field_name, default)
 
-    """
-    migrator.add_fields(
-        'tag', created_at=pw.DateTimeField(null=True))
+"""
+
+import datetime as dt
+import peewee as pw
+
+
+def migrate(migrator, database, **kwargs):
+    """Write your migrations here."""
+{migrate}
+
+
+def rollback(migrator, database, **kwargs):
+    """Write your rollback migrations here."""
+{rollback}
