@@ -7,10 +7,20 @@ NEWLINE = '\n' + INDENT
 
 class Column(VanilaColumn):
 
+    def __init__(self, *args, **kwargs):
+        self.default = kwargs.pop('default', None)
+        super(Column, self).__init__(*args, **kwargs)
+
+    def get_field_parameters(self):
+        params = super(Column, self).get_field_parameters()
+        if self.default is not None and not callable(self.default):
+            params['default'] = self.default
+        return params
+
     def get_field(self, space=' '):
         # Generate the field definition for this column.
         field_params = self.get_field_parameters()
-        param_str = ', '.join('%s=%s' % (k, v)
+        param_str = ', '.join('%s=%s' % (k, repr(v))
                               for k, v in sorted(field_params.items()))
         return '{name}{space}={space}pw.{classname}({params})'.format(
             name=self.name, space=space, classname=self.field_class.__name__, params=param_str)
@@ -108,6 +118,8 @@ def field_to_code(field, space=True):
         field.primary_key,
         field.db_column,
         field.index,
-        field.unique)
+        field.unique,
+        default=field.default
+    )
 
     return col.get_field(' ' if space else '')
