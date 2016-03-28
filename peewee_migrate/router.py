@@ -117,7 +117,7 @@ class BaseRouter(object):
 
         migrator = self.migrator
         for mname in diff:
-            self.run_one(mname, migrator, fake=False, force=fake)
+            self.run_one(mname, migrator, fake=fake, force=fake)
             done.append(mname)
             if name and name == mname:
                 break
