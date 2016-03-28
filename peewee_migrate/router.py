@@ -63,16 +63,13 @@ class BaseRouter(object):
 
     @property
     def migrator(self):
-        diff = self.diff
         migrator = Migrator(self.database)
-        for name in self.todo:
-            self.run_one(name, migrator, name not in diff)
+        for name in self.done:
+            self.run_one(name, migrator)
         return migrator
 
     def run_one(self, name, migrator, fake=True, downgrade=False):
         """Run a migration."""
-        if not fake:
-            self.logger.info('Run "%s"', name)
 
         try:
             migrate, rollback = self.read(name)
@@ -83,13 +80,13 @@ class BaseRouter(object):
                 migrator.clean()
                 return migrator
 
+            self.logger.info('Run "%s"', name)
             with self.database.transaction():
                 if not downgrade:
-                    self.logger.info('Migrate %s', name)
                     migrate(migrator, self.database)
                     migrator.run()
                     self.model.create(name=name)
-                    self.logger.info('Migrated %s', name)
+                    self.logger.info('Done %s', name)
                 else:
                     self.logger.info('Rollback %s', name)
                     rollback(migrator, self.database)
@@ -107,17 +104,15 @@ class BaseRouter(object):
         """Run migrations."""
         self.logger.info('Start migrations')
 
-        migrator = Migrator(self.database)
+        done = []
         diff = self.diff
-
         if not diff:
             self.logger.info('There is nothing to migrate')
-            return None
+            return done
 
         migrator = self.migrator
-        done = []
         for mname in diff:
-            self.run_one(mname, migrator)
+            self.run_one(mname, migrator, False)
             done.append(mname)
             if name and name == mname:
                 break

@@ -2,12 +2,16 @@
 import os
 from types import StringTypes
 import sys
+import re
 
+import peewee as pw
 import click
+from importlib import import_module
 from playhouse.db_url import connect
 
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG']
+CLEAN_RE = re.compile(r'\s+$', re.M)
 
 
 def get_router(directory, database, verbose=0):
@@ -21,7 +25,7 @@ def get_router(directory, database, verbose=0):
         with open(os.path.join(directory, 'conf.py')) as cfg:
             exec_in(cfg.read(), config, config)
             database = config.get('DATABASE', database)
-            logging_level = config.get('LOGGING_LEVEL', logging_level)
+            logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
     except IOError:
         pass
 
@@ -51,19 +55,47 @@ def migrate(name=None, database=None, directory=None, verbose=None):
     """ Run migrations. """
     router = get_router(directory, database, verbose)
     migrations = router.run(name)
-    click.echo('Migrations are completed: %s' % ', '.join(migrations))
+    if migrations:
+        click.echo('Migrations are completed: %s' % ', '.join(migrations))
 
 
 @cli.command()
 @click.argument('name')
+@click.option('--auto', default=False, help=(
+    "Create migrations automatically. Set to your models module."))
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
-def create(name, database=None, directory=None, verbose=None):
+def create(name, database=None, auto=False, directory=None, verbose=None):
     """ Create migration. """
+    from peewee_migrate.auto import diff_many, NEWLINE
     router = get_router(directory, database, verbose)
-    path = router.create(name)
-    click.echo('Migration is created: %s' % path)
+    migrate_ = rollback_ = ''
+    if auto:
+        try:
+            mod = import_module(auto)
+            models = []
+            for name_ in dir(mod):
+                obj = getattr(mod, name_)
+                if isinstance(obj, type) and issubclass(obj, pw.Model):
+                    models.append(obj)
+            try:
+                migrator = router.migrator
+            except Exception as exc:
+                router.logger.error(exc)
+                return sys.exit(1)
+            for name_ in router.diff:
+                router.run_one(name_, migrator)
+            migrate_ = diff_many(models, migrator.orm.values())
+            migrate_ = NEWLINE + NEWLINE.join('\n\n'.join(migrate_).split('\n'))
+            migrate_ = CLEAN_RE.sub('\n', migrate_)
+            rollback_ = diff_many(migrator.orm.values(), models)
+            rollback_ = NEWLINE + NEWLINE.join('\n\n'.join(rollback_).split('\n'))
+            rollback_ = CLEAN_RE.sub('\n', rollback_)
+        except ImportError:
+            router.logger.error('Invalid module.')
+
+    router.create(name, migrate=migrate_, rollback=rollback_)
 
 
 @cli.command()
@@ -73,5 +105,4 @@ def create(name, database=None, directory=None, verbose=None):
 @click.option('-v', '--verbose', count=True)
 def rollback(name, database=None, directory=None, verbose=None):
     router = get_router(directory, database, verbose)
-    name = router.rollback(name)
-    click.echo('Migration has been canceled: %s' % name)
+    router.rollback(name)

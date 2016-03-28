@@ -1,6 +1,9 @@
 from playhouse.reflection import Column as VanilaColumn
 from peewee import PrimaryKeyField
 
+INDENT = '    '
+NEWLINE = '\n' + INDENT
+
 
 class Column(VanilaColumn):
 
@@ -50,7 +53,7 @@ def diff_many(models1, models2):
 
     # Remove models
     for name in set(models2) - set(models1):
-        changes.append(remove_model(models1[name]))
+        changes.append(remove_model(models2[name]))
 
     for name, model1 in models1.items():
         if name not in models2:
@@ -61,11 +64,10 @@ def diff_many(models1, models2):
 
 
 def model_to_code(Model):
-    template = """
-class {classname}(pw.Model):
+    template = """class {classname}(pw.Model):
 {fields}
 """
-    fields = '   ' + '\n   '.join([
+    fields = INDENT + NEWLINE.join([
         field_to_code(field) for field in Model._meta.sorted_fields
         if not (isinstance(field, PrimaryKeyField) and field.name == 'id')
     ])
@@ -84,9 +86,10 @@ def remove_model(Model):
 
 
 def create_fields(Model, *fields):
-    return 'migrator.add_fields(\n   "%s", %s)' % (
+    return 'migrator.add_fields(%s"%s", %s)' % (
+        NEWLINE,
         Model._meta.name,
-        '\n   ' + '\n   '.join([field_to_code(field, False) for field in fields])
+        NEWLINE + NEWLINE.join([field_to_code(field, False) for field in fields])
     )
 
 
