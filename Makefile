@@ -65,6 +65,7 @@ upload: clean
 $(VIRTUALENV): requirements.txt
 	@[ -d $(VIRTUALENV) ] || virtualenv --no-site-packages $(VIRTUALENV)
 	@$(VIRTUALENV)/bin/pip install -r requirements.txt
+	@touch $(VIRTUALENV)
 
 .PHONY: test
 # target: test - Runs tests
@@ -73,6 +74,7 @@ test: clean $(VIRTUALENV)/bin/py.test
 
 $(VIRTUALENV)/bin/py.test: $(VIRTUALENV) requirements-tests.txt
 	@$(VIRTUALENV)/bin/pip install -r $(CURDIR)/requirements-tests.txt
+	@touch $(VIRTUALENV)/bin/py.test
 
 .PHONY: t
 t: test

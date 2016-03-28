@@ -10,7 +10,7 @@ from importlib import import_module
 from playhouse.db_url import connect
 
 
-VERBOSE = ['WARNING', 'INFO', 'DEBUG']
+VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
 
 
@@ -50,11 +50,12 @@ def cli():
 @click.option('--name', default=None, help="Select migration")
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('--fake', default=False, help=("Run migration as fake."))
 @click.option('-v', '--verbose', count=True)
-def migrate(name=None, database=None, directory=None, verbose=None):
+def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
     """ Run migrations. """
     router = get_router(directory, database, verbose)
-    migrations = router.run(name)
+    migrations = router.run(name, fake=fake)
     if migrations:
         click.echo('Migrations are completed: %s' % ', '.join(migrations))
 

@@ -68,7 +68,7 @@ class BaseRouter(object):
             self.run_one(name, migrator)
         return migrator
 
-    def run_one(self, name, migrator, fake=True, downgrade=False):
+    def run_one(self, name, migrator, fake=True, downgrade=False, force=False):
         """Run a migration."""
 
         try:
@@ -77,6 +77,11 @@ class BaseRouter(object):
                 with mock.patch('peewee.Model.select'):
                     with mock.patch('peewee.InsertQuery.execute'):
                         migrate(migrator, self.database)
+
+                if force:
+                    self.model.create(name=name)
+                    self.logger.info('Done %s', name)
+
                 migrator.clean()
                 return migrator
 
@@ -100,7 +105,7 @@ class BaseRouter(object):
             self.logger.error('Migration failed: %s', name)
             raise
 
-    def run(self, name=None):
+    def run(self, name=None, fake=False):
         """Run migrations."""
         self.logger.info('Start migrations')
 
@@ -112,7 +117,7 @@ class BaseRouter(object):
 
         migrator = self.migrator
         for mname in diff:
-            self.run_one(mname, migrator, False)
+            self.run_one(mname, migrator, fake=False, force=fake)
             done.append(mname)
             if name and name == mname:
                 break

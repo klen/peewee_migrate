@@ -13,9 +13,8 @@ def test_cli(tmpdir):
     assert 'rollback' in result.output
 
     result = runner.invoke(cli, [
-        'create', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', 'test'])
+        'create', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '-vvv', 'test'])
     assert result.exit_code == 0
-    assert 'Migration is created' in result.output
 
     result = runner.invoke(cli, [
         'migrate', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:'])
@@ -25,6 +24,3 @@ def test_cli(tmpdir):
     result = runner.invoke(cli, [
         'rollback', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '001_test'])
     assert result.exit_code == -1
-
-    result = runner.invoke(cli, ['rollback', 'test'])
-    assert type(result.exception) == RuntimeError
