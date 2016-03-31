@@ -9,7 +9,7 @@ import datetime as dt
 # Package information
 # ===================
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 __project__ = "peewee_migrate"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
