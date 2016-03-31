@@ -122,7 +122,7 @@ def create_fields(Model, *fields):
     return 'migrator.add_fields(%s"%s", %s)' % (
         NEWLINE,
         Model._meta.name,
-        NEWLINE + NEWLINE.join([field_to_code(field, False) for field in fields])
+        NEWLINE + (',' + NEWLINE).join([field_to_code(field, False) for field in fields])
     )
 
 
