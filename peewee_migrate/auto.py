@@ -128,7 +128,7 @@ def create_fields(Model, *fields):
 
 def drop_fields(Model, *fields):
     return 'migrator.remove_fields("%s", %s)' % (
-        Model._meta.name, ' '.join(fields)
+        Model._meta.name, ', '.join(map(repr, fields))
     )
 
 
