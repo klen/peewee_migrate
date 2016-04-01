@@ -115,11 +115,11 @@ def create_model(Model):
 
 
 def remove_model(Model):
-    return 'migrator.remove_model("%s")' % Model._meta.db_table
+    return "migrator.remove_model('%s')" % Model._meta.db_table
 
 
 def create_fields(Model, *fields):
-    return 'migrator.add_fields(%s"%s", %s)' % (
+    return "migrator.add_fields(%s'%s', %s)" % (
         NEWLINE,
         Model._meta.db_table,
         NEWLINE + (',' + NEWLINE).join([field_to_code(field, False) for field in fields])
@@ -127,7 +127,7 @@ def create_fields(Model, *fields):
 
 
 def drop_fields(Model, *fields):
-    return 'migrator.remove_fields("%s", %s)' % (
+    return "migrator.remove_fields('%s', %s)" % (
         Model._meta.db_table, ', '.join(map(repr, fields))
     )
 
