@@ -78,7 +78,7 @@ def diff_one(model1, model2):
     for name in set(fields1) - names1 - names2:
         field1, field2 = fields1[name], fields2[name]
         if compare_fields(field1, field2):
-            fields_.append(field2)
+            fields_.append(field1)
 
     if fields_:
         changes.append(change_fields(model1, *fields_))

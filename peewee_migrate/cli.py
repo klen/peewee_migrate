@@ -1,13 +1,14 @@
 """ CLI integration. """
 import os
-from types import StringTypes
-import sys
 import re
-
-import peewee as pw
-import click
+import sys
 from importlib import import_module
+
+import click
+import peewee as pw
 from playhouse.db_url import connect
+
+from peewee_migrate.compat import string_types
 
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
@@ -16,7 +17,7 @@ CLEAN_RE = re.compile(r'\s+$', re.M)
 
 def get_router(directory, database, verbose=0):
     from peewee_migrate import LOGGER
-    from peewee_migrate.utils import exec_in # noqa
+    from peewee_migrate.compat import exec_in
     from peewee_migrate.router import Router
 
     logging_level = VERBOSE[verbose]
@@ -29,7 +30,7 @@ def get_router(directory, database, verbose=0):
     except IOError:
         pass
 
-    if isinstance(database, StringTypes):
+    if isinstance(database, string_types):
         database = connect(database)
 
     LOGGER.setLevel(logging_level)
@@ -82,7 +83,7 @@ def create(name, database=None, auto=False, directory=None, verbose=None):
                     models.append(obj)
             try:
                 migrator = router.migrator
-            except Exception as exc:
+            except Exception as exc:  # noqa
                 router.logger.error(exc)
                 return sys.exit(1)
             for name_ in router.diff:
