@@ -8,7 +8,7 @@ FIELD_TO_PARAMS = {
     pw.CharField: lambda f: {'max_length': f.max_length},
     pw.ForeignKeyField: lambda f: {
         'rel_model': f.rel_model.__name__, 'related_name': f.related_name,
-        'on_delete': f.on_delete, 'on_update': f.on_update , 'to_field': f.to_field
+        'on_delete': f.on_delete, 'on_update': f.on_update , 'to_field': f.to_field.name
     },
     pw.DecimalField: lambda f: {
         'max_digits': f.max_digits, 'decimal_places': f.decimal_places,

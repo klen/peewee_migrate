@@ -88,6 +88,9 @@ def create(name, database=None, auto=False, directory=None, verbose=None):
             for name_ in router.diff:
                 router.run_one(name_, migrator)
             migrate_ = diff_many(models, migrator.orm.values())
+            if not migrate_:
+                return router.logger.warn('No changes has found.')
+
             migrate_ = NEWLINE + NEWLINE.join('\n\n'.join(migrate_).split('\n'))
             migrate_ = CLEAN_RE.sub('\n', migrate_)
             rollback_ = diff_many(migrator.orm.values(), models)
