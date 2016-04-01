@@ -19,7 +19,7 @@ def test_auto():
 
     class Person(pw.Model):
         first_name = pw.IntegerField()
-        last_name = pw.CharField()
+        last_name = pw.CharField(max_length=1024)
 
     changes = diff_one(Person_, Person)
-    assert len(changes) == 1
+    assert len(changes) == 2

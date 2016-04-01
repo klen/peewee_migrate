@@ -1,8 +1,19 @@
 from playhouse.reflection import Column as VanilaColumn
-from peewee import PrimaryKeyField, ForeignKeyField, CharField
+import peewee as pw
 
 INDENT = '    '
 NEWLINE = '\n' + INDENT
+
+FIELD_TO_PARAMS = {
+    pw.CharField: lambda f: {'max_length': f.max_length},
+    pw.ForeignKeyField: lambda f: {
+        'rel_model': f.rel_model.__name__, 'related_name': f.related_name,
+        'on_delete': f.on_delete, 'on_update': f.on_update , 'to_field': f.to_field
+    },
+    pw.DecimalField: lambda f: {
+        'max_digits': f.max_digits, 'decimal_places': f.decimal_places,
+        'auto_round': f.auto_round, 'rounding': f.rounding},
+}
 
 
 class Column(VanilaColumn):
@@ -19,24 +30,19 @@ class Column(VanilaColumn):
         if field.default is not None and not callable(field.default):
             self.params['default'] = field.default
 
-        if isinstance(field, CharField):
-            self.params['max_length'] = field.max_length
+        if self.field_class in FIELD_TO_PARAMS:
+            self.params.update(FIELD_TO_PARAMS[self.field_class](field))
 
         self.rel_model = None
         self.related_name = None
         self.to_field = None
 
-        if isinstance(field, ForeignKeyField):
+        if isinstance(field, pw.ForeignKeyField):
             self.rel_model = field.rel_model
             self.related_name = field.related_name
 
     def get_field_parameters(self):
         params = super(Column, self).get_field_parameters()
-        if self.is_foreign_key():
-            params['rel_model'] = self.rel_model.__name__
-            if self.related_name:
-                params['related_name'] = "'%s'" % self.related_name
-
         params.update({k: repr(v) for k, v in self.params.items()})
         return params
 
@@ -57,19 +63,25 @@ def diff_one(model1, model2):
     fields2 = model2._meta.fields
 
     # Add fields
-    names = set(fields1) - set(fields2)
-    if names:
-        fields = [fields1[name] for name in names]
+    names1 = set(fields1) - set(fields2)
+    if names1:
+        fields = [fields1[name] for name in names1]
         changes.append(create_fields(model1, *fields))
 
-    names = set(fields2) - set(fields1)
-    if names:
-        changes.append(drop_fields(model1, *names))
+    # Drop fields
+    names2 = set(fields2) - set(fields1)
+    if names2:
+        changes.append(drop_fields(model1, *names2))
 
-    #  for name, field1 in fields1.items():
-        #  if name not in fields2:
-        #  continue
-        #  field2 = fields2[name]
+    # Change fields
+    fields_ = []
+    for name in set(fields1) - names1 - names2:
+        field1, field2 = fields1[name], fields2[name]
+        if compare_fields(field1, field2):
+            fields_.append(field2)
+
+    if fields_:
+        changes.append(change_fields(model1, *fields_))
 
     return changes
 
@@ -102,7 +114,7 @@ def model_to_code(Model):
 """
     fields = INDENT + NEWLINE.join([
         field_to_code(field) for field in Model._meta.sorted_fields
-        if not (isinstance(field, PrimaryKeyField) and field.name == 'id')
+        if not (isinstance(field, pw.PrimaryKeyField) and field.name == 'id')
     ])
     return template.format(
         classname=Model.__name__,
@@ -135,3 +147,24 @@ def drop_fields(Model, *fields):
 def field_to_code(field, space=True):
     col = Column(field)
     return col.get_field(' ' if space else '')
+
+
+def compare_fields(field1, field2):
+    field_cls1, field_cls2 = type(field1), type(field2)
+    if field_cls1 != field_cls2:  # noqa
+        return True
+
+    params1 = FIELD_TO_PARAMS.get(field_cls1, lambda f: {})(field1)
+    if field1.default is not None and not callable(field1.default):
+        params1['default'] = field1.default
+
+    params2 = FIELD_TO_PARAMS.get(field_cls2, lambda f: {})(field2)
+    if field2.default is not None and not callable(field2.default):
+        params2['default'] = field2.default
+    return set(params1.values()) - set(params2.values())
+
+
+def change_fields(Model, *fields):
+    return "migrator.change_fields('%s', %s)" % (
+        Model._meta.db_table, (',' + NEWLINE).join([field_to_code(f, False) for f in fields])
+    )
