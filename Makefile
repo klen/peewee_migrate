@@ -55,8 +55,8 @@ register:
 # target: upload - Upload module on PyPi
 upload: clean
 	@pip install twine wheel
-	@python setup.py sdist upload
-	@python setup.py bdist_wheel upload
+	@python setup.py sdist upload || true
+	@python setup.py bdist_wheel upload || true
 
 # =============
 #  Development

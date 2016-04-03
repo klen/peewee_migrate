@@ -1,16 +1,19 @@
 import os
 import re
 from importlib import import_module
+from types import ModuleType
 
 import mock
 import peewee as pw
 from cached_property import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
+from peewee_migrate.auto import diff_many, NEWLINE
 from peewee_migrate.compat import string_types, exec_in
 from peewee_migrate.migrator import Migrator
 
 
+CLEAN_RE = re.compile(r'\s+$', re.M)
 MIGRATE_DIR = os.path.join(os.getcwd(), 'migrations')
 VOID = lambda m, d: None # noqa
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt')) as t:
@@ -32,18 +35,50 @@ class BaseRouter(object):
         """Ensure that migrations has prepared to run."""
         # Initialize MigrationHistory model
         MigrateHistory._meta.database = self.database
-        try:
-            MigrateHistory.create_table()
-        except pw.DatabaseError:
-            self.database.rollback()
+        MigrateHistory.create_table(True)
         return MigrateHistory
 
     @property
     def todo(self):
         raise NotImplementedError
 
-    def create(self, name='auto'):
+    def create(self, name='auto', auto=False):
         """Create a migration."""
+        migrate = rollback = ''
+        if auto:
+            if isinstance(auto, str):
+                try:
+                    auto = import_module(auto)
+                except ImportError:
+                    return router.logger.error('Invalid models module: %s' % mod)
+
+            if isinstance(auto, ModuleType):
+                auto = list(filter(
+                    lambda m: isinstance(m, type), issubclass(m, pw.Model)),
+                    (getattr(auto, model) for model in dir(auto)))
+
+            for migration in self.diff:
+                self.run_one(migration, self.migrator)
+
+            models = auto
+
+            migrate = diff_many(models, self.migrator.orm.values())
+            if not migrate:
+                return router.logger.warn('No changes has found.')
+
+            migrate = NEWLINE + NEWLINE.join('\n\n'.join(migrate).split('\n'))
+            migrate = CLEAN_RE.sub('\n', migrate)
+
+            rollback = diff_many(migrator.orm.values(), models)
+            rollback = NEWLINE + NEWLINE.join('\n\n'.join(rollback_).split('\n'))
+            rollback = CLEAN_RE.sub('\n', rollback_)
+
+        self.logger.info('Create a migration "%s"', name)
+        path = self._create(name, migrate, rollback)
+        self.logger.info('Migration has created %s', path)
+        return path
+
+    def _create(self, name, migrate='', rollback=''):
         raise NotImplementedError
 
     def read(self, name):
@@ -60,8 +95,9 @@ class BaseRouter(object):
         done = set(self.done)
         return [name for name in self.todo if name not in done]
 
-    @property
+    @cached_property
     def migrator(self):
+        """Create migrator and setup it with fake migrations."""
         migrator = Migrator(self.database)
         for name in self.done:
             self.run_one(name, migrator)
@@ -153,9 +189,8 @@ class Router(BaseRouter):
         return sorted(
             ''.join(f[:-3]) for f in os.listdir(self.migrate_dir) if self.filemask.match(f))
 
-    def create(self, name='auto', migrate='', rollback=''):
+    def _create(self, name, migrate='', rollback=''):
         """Create a migration."""
-        self.logger.info('Create a migration "%s"', name)
         num = len(self.todo)
         prefix = '{:03}_'.format(num + 1)
         name = prefix + name + '.py'
@@ -163,7 +198,6 @@ class Router(BaseRouter):
         with open(path, 'w') as f:
             f.write(MIGRATE_TEMPLATE.format(migrate=migrate, rollback=rollback))
 
-        self.logger.info('Migration has created %s', path)
         return path
 
     def read(self, name):

@@ -23,10 +23,6 @@ Peewee Migrate -- A simple migration engine for Peewee
     :target: https://pypi.python.org/pypi/peewee_migrate
     :alt: Downloads
 
-.. image:: http://img.shields.io/gratipay/klen.svg?style=flat-square
-    :target: https://www.gratipay.com/klen/
-    :alt: Donate
-
 .. _contents:
 
 .. contents::
