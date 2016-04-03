@@ -1,5 +1,8 @@
-from playhouse.reflection import Column as VanilaColumn
+from collections import Hashable
+
 import peewee as pw
+from playhouse.reflection import Column as VanilaColumn
+
 
 INDENT = '    '
 NEWLINE = '\n' + INDENT
@@ -154,14 +157,19 @@ def compare_fields(field1, field2):
     if field_cls1 != field_cls2:  # noqa
         return True
 
-    params1 = FIELD_TO_PARAMS.get(field_cls1, lambda f: {})(field1)
-    if field1.default is not None and not callable(field1.default):
-        params1['default'] = field1.default
+    params1 = field_to_params(field1)
+    params2 = field_to_params(field2)
 
-    params2 = FIELD_TO_PARAMS.get(field_cls2, lambda f: {})(field2)
-    if field2.default is not None and not callable(field2.default):
-        params2['default'] = field2.default
-    return set(params1.values()) - set(params2.values())
+    return set(params1.items()) - set(params2.items())
+
+
+def field_to_params(field):
+    params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
+    if field.default is not None and \
+            not callable(field.default) and \
+            isinstance(field.default, Hashable):
+        params['default'] = field.default
+    return params
 
 
 def change_fields(Model, *fields):
