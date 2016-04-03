@@ -50,28 +50,29 @@ class BaseRouter(object):
                 try:
                     auto = import_module(auto)
                 except ImportError:
-                    return router.logger.error('Invalid models module: %s' % mod)
+                    return self.logger.error('Invalid models module: %s', auto)
 
             if isinstance(auto, ModuleType):
                 auto = list(filter(
-                    lambda m: isinstance(m, type), issubclass(m, pw.Model)),
-                    (getattr(auto, model) for model in dir(auto)))
+                    lambda m: isinstance(m, type) and issubclass(m, pw.Model)),
+                    (getattr(auto, model) for model in dir(auto)))  # noqa
 
             for migration in self.diff:
                 self.run_one(migration, self.migrator)
 
-            models = auto
+            models1 = auto
+            models2 = list(self.migrator.orm.values())
 
-            migrate = diff_many(models, self.migrator.orm.values())
+            migrate = diff_many(models1, models2)
             if not migrate:
-                return router.logger.warn('No changes has found.')
+                return self.logger.warn('No changes has found.')
 
             migrate = NEWLINE + NEWLINE.join('\n\n'.join(migrate).split('\n'))
             migrate = CLEAN_RE.sub('\n', migrate)
 
-            rollback = diff_many(migrator.orm.values(), models)
-            rollback = NEWLINE + NEWLINE.join('\n\n'.join(rollback_).split('\n'))
-            rollback = CLEAN_RE.sub('\n', rollback_)
+            rollback = diff_many(models2, models1)
+            rollback = NEWLINE + NEWLINE.join('\n\n'.join(rollback).split('\n'))
+            rollback = CLEAN_RE.sub('\n', rollback)
 
         self.logger.info('Create a migration "%s"', name)
         path = self._create(name, migrate, rollback)
