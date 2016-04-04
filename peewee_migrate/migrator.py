@@ -158,6 +158,9 @@ class Migrator(object):
             field.add_to_class(model, name)
             self.ops.append(self.migrator.change_column(
                 model._meta.db_table, field.db_column, field))
+            if field.unique:
+                self.ops.append(self.migrator.add_index(
+                    model._meta.db_table, (field.db_column,), unique=True))
         return model
 
     change_fields = change_columns
@@ -169,9 +172,12 @@ class Migrator(object):
         cascade = kwargs.pop('cascade', True)
         for field in fields:
             self.__del_field__(model, field)
+            if field.unique:
+                compiler = self.database.compiler()
+                index_name = compiler.index_name(model._meta.db_table, (field.db_column,))
+                self.ops.append(self.migrator.drop_index(model._meta.db_table, index_name))
             self.ops.append(
-                self.migrator.drop_column(
-                    model._meta.db_table, field.db_column, cascade=cascade))
+                self.migrator.drop_column(model._meta.db_table, field.db_column, cascade=cascade))
         return model
 
     remove_fields = drop_columns

@@ -15,6 +15,7 @@ def test_migrator():
     @migrator.create_table
     class Order(pw.Model):
         number = pw.CharField()
+        uid = pw.CharField(unique=True)
 
         customer = pw.ForeignKeyField(Customer)
 
@@ -25,7 +26,7 @@ def test_migrator():
     assert 'finished' in Order._meta.fields
     migrator.run()
 
-    migrator.drop_columns('order', 'finished', 'customer')
+    migrator.drop_columns('order', 'finished', 'customer', 'uid')
     assert 'finished' not in Order._meta.fields
     migrator.run()
 

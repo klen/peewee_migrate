@@ -1,6 +1,6 @@
-VIRTUALENV=$(shell echo "$${VIRTUALENV:-'.env'}")
+VIRTUAL_ENV	?= '.env'
 
-all: $(VIRTUALENV)
+all: $(VIRTUAL_ENV)
 
 .PHONY: help
 # target: help - Display callable targets
@@ -62,19 +62,19 @@ upload: clean
 #  Development
 # =============
 
-$(VIRTUALENV): requirements.txt
-	@[ -d $(VIRTUALENV) ] || virtualenv --no-site-packages $(VIRTUALENV)
-	@$(VIRTUALENV)/bin/pip install -r requirements.txt
-	@touch $(VIRTUALENV)
+$(VIRTUAL_ENV): $(CURDIR)/requirements.txt
+	@[ -d $(VIRTUAL_ENV) ] || virtualenv --no-site-packages $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
+	@touch $(VIRTUAL_ENV)
 
 .PHONY: test
 # target: test - Runs tests
-test: clean $(VIRTUALENV)/bin/py.test
+test: $(VIRTUAL_ENV)/bin/py.test
 	@py.test -xs tests
 
-$(VIRTUALENV)/bin/py.test: $(VIRTUALENV) requirements-tests.txt
-	@$(VIRTUALENV)/bin/pip install -r $(CURDIR)/requirements-tests.txt
-	@touch $(VIRTUALENV)/bin/py.test
+$(VIRTUAL_ENV)/bin/py.test: $(CURDIR)/requirements-tests.txt $(VIRTUAL_ENV) 
+	@$(VIRTUAL_ENV)/bin/pip install -r $(CURDIR)/requirements-tests.txt
+	@touch $(VIRTUAL_ENV)/bin/py.test
 
 .PHONY: t
 t: test
