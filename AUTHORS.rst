@@ -10,4 +10,5 @@ Development Lead
 Contributors
 ------------
 
+* Dima Kurguzov (https://github.com/koorgoo)
 * Nick Shobe (https://github.com/dingus9)
