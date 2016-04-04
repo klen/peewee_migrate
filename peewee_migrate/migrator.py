@@ -144,6 +144,9 @@ class Migrator(object):
         for name, field in fields.items():
             field.add_to_class(model, name)
             self.ops.append(self.migrator.add_column(model._meta.db_table, field.db_column, field))
+            if field.unique:
+                self.ops.append(self.migrator.add_index(
+                    model._meta.db_table, (field.db_column,), unique=True))
         return model
 
     add_fields = add_columns
