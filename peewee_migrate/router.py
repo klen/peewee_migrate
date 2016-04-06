@@ -112,7 +112,8 @@ class BaseRouter(object):
             if fake:
                 with mock.patch('peewee.Model.select'):
                     with mock.patch('peewee.InsertQuery.execute'):
-                        migrate(migrator, self.database)
+                        with mock.patch('peewee.UpdateQuery.execute'):
+                            migrate(migrator, self.database)
 
                 if force:
                     self.model.create(name=name)
