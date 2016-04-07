@@ -48,6 +48,8 @@ Installation
 Usage
 =====
 
+Do you want Flask_ integration? Look at Flask-PW_.
+
 From shell
 ----------
 
@@ -143,4 +145,6 @@ Licensed under a `BSD license`_.
 .. _links:
 
 .. _BSD license: http://www.linfo.org/bsdlicense.html
-.. _klen: http://klen.github.com/
+.. _klen: https://klen.github.io/
+.. _Flask: http://flask.pocoo.org/
+.. _Flask-PW: https://github.com/klen/flask-pw
