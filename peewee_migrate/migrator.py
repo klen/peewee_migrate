@@ -20,7 +20,7 @@ class SchemaMigrator(ScM):
             return PostgresqlMigrator(database)
         if isinstance(database, SqliteDatabase):
             return SqliteMigrator(database)
-        super(SchemaMigrator, cls).from_database(database)
+        return super(SchemaMigrator, cls).from_database(database)
 
     @operation
     def change_column(self, table, column_name, field):
