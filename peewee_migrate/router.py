@@ -111,9 +111,8 @@ class BaseRouter(object):
             migrate, rollback = self.read(name)
             if fake:
                 with mock.patch('peewee.Model.select'):
-                    with mock.patch('peewee.InsertQuery.execute'):
-                        with mock.patch('peewee.UpdateQuery.execute'):
-                            migrate(migrator, self.database)
+                    with mock.patch('peewee.Query.execute'):
+                        migrate(migrator, self.database)
 
                 if force:
                     self.model.create(name=name)
