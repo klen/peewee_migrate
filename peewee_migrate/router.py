@@ -111,8 +111,8 @@ class BaseRouter(object):
             migrate, rollback = self.read(name)
             if fake:
                 with mock.patch('peewee.Model.select'):
-                    with mock.patch('peewee.Query.execute'):
-                        migrate(migrator, self.database)
+                    with mock.patch('peewee.Query._execute'):
+                        migrate(migrator, self.database, fake=fake)
 
                 if force:
                     self.model.create(name=name)
@@ -124,13 +124,13 @@ class BaseRouter(object):
             self.logger.info('Run "%s"', name)
             with self.database.transaction():
                 if not downgrade:
-                    migrate(migrator, self.database)
+                    migrate(migrator, self.database, fake=fake)
                     migrator.run()
                     self.model.create(name=name)
                     self.logger.info('Done %s', name)
                 else:
                     self.logger.info('Rollback %s', name)
-                    rollback(migrator, self.database)
+                    rollback(migrator, self.database, fake=fake)
                     migrator.run()
                     self.model.delete().where(self.model.name == name).execute()
                     self.logger.info('Rolled back %s', name)

@@ -24,11 +24,11 @@ import datetime as dt
 import peewee as pw
 
 
-def migrate(migrator, database, **kwargs):
+def migrate(migrator, database, fake=False, **kwargs):
     """Write your migrations here."""
 {migrate}
 
 
-def rollback(migrator, database, **kwargs):
+def rollback(migrator, database, fake=False, **kwargs):
     """Write your rollback migrations here."""
 {rollback}
