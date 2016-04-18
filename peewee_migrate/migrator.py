@@ -22,6 +22,9 @@ class SchemaMigrator(ScM):
             return SqliteMigrator(database)
         return super(SchemaMigrator, cls).from_database(database)
 
+    def drop_table(self, model, cascade=True):
+        return lambda: model.drop_table(cascade=cascade)
+
     @operation
     def change_column(self, table, column_name, field):
         """Change column."""
@@ -58,6 +61,10 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 class SqliteMigrator(SchemaMigrator, SqM):
 
     """Support the migrations in sqlite."""
+
+    def drop_table(self, model, cascade=True):
+        """SQLite doesnt support cascade syntax by default."""
+        return lambda: model.drop_table(cascade=False)
 
     def alter_change_column(self, table, column, field):
         """Support change columns."""
@@ -133,8 +140,7 @@ class Migrator(object):
         >> migrator.drop_table(model, cascade=True)
         """
         del self.orm[model._meta.db_table]
-        self.ops.append(lambda: model.drop_table(cascade=cascade))
-        return None
+        self.ops.append(self.migrator.drop_table(model, cascade))
 
     remove_model = drop_table
 
