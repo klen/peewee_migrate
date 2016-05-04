@@ -50,12 +50,12 @@ class BaseRouter(object):
                 try:
                     auto = import_module(auto)
                 except ImportError:
-                    return self.logger.error('Invalid models module: %s', auto)
+                    return self.logger.error("Can't import models module: %s", auto)
 
             if isinstance(auto, ModuleType):
                 auto = list(filter(
-                    lambda m: isinstance(m, type) and issubclass(m, pw.Model)),
-                    (getattr(auto, model) for model in dir(auto)))  # noqa
+                    lambda m: isinstance(m, type) and issubclass(m, pw.Model),
+                    (getattr(auto, model) for model in dir(auto))))  # noqa
 
             for migration in self.diff:
                 self.run_one(migration, self.migrator)
