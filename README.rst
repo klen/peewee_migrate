@@ -100,8 +100,9 @@ From python
 ::
 
     from peewee_migrate.core import Router
+    from peewee import SqliteDatabase
 
-    router = Router('migrations', DATABASE='sqlite:///test.db')
+    router = Router(SqliteDatabase('test.db'))
 
     # Create migration
     router.create('migration_name')
@@ -112,6 +113,20 @@ From python
     # Run all unapplied migrations
     router.run()
 
+Migration files
+---------------
+
+By default, migration files are looked up in ``os.getcwd()/migrations`` directory, but custom directory can be given.
+
+Migration files are sorted and applied in ascending order per their filename.
+
+Each migration file must specify ``migrate()`` function and may specify ``rollback()`` function::
+
+    def migrate(migrator, database, fake=False, **kwargs):
+        pass
+
+    def rollback(migrator, database, fake=False, **kwargs):
+        pass
 
 .. _bugtracker:
 
