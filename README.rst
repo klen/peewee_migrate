@@ -99,7 +99,7 @@ From python
 -----------
 ::
 
-    from peewee_migrate.core import Router
+    from peewee_migrate import Router
     from peewee import SqliteDatabase
 
     router = Router(SqliteDatabase('test.db'))
