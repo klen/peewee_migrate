@@ -5,7 +5,6 @@
     > migrator.sql(sql)
     > migrator.python(func, *args, **kwargs)
     > migrator.create_model(Model)
-    > migrator.store_model(Model)
     > migrator.remove_model(Model, cascade=True)
     > migrator.add_fields(Model, **fields)
     > migrator.change_fields(Model, **fields)
