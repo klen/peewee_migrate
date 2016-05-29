@@ -45,3 +45,4 @@ docs/_build
 /test.db
 /_
 /.cache
+.venv
