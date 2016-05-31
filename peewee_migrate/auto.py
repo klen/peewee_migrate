@@ -1,4 +1,4 @@
-from collections import Hashable
+from collections import Hashable, OrderedDict
 
 import peewee as pw
 from playhouse.reflection import Column as VanilaColumn
@@ -41,7 +41,7 @@ class Column(VanilaColumn):
         self.to_field = None
 
         if isinstance(field, pw.ForeignKeyField):
-            self.rel_model = field.rel_model
+            self.rel_model = field.rel_model.__name__
             self.related_name = field.related_name
 
     def get_field_parameters(self):
@@ -89,18 +89,25 @@ def diff_one(model1, model2):
     return changes
 
 
-def diff_many(models1, models2):
-    models1 = {m._meta.name: m for m in models1}
-    models2 = {m._meta.name: m for m in models2}
+def diff_many(models1, models2, reverse=False):
+    models1 = pw.sort_models_topologically(models1)
+    models2 = pw.sort_models_topologically(models2)
+
+    if reverse:
+        models1 = reversed(models1)
+        models2 = reversed(models2)
+
+    models1 = OrderedDict([(m._meta.name, m) for m in models1])
+    models2 = OrderedDict([(m._meta.name, m) for m in models2])
 
     changes = []
 
     # Add models
-    for name in set(models1) - set(models2):
+    for name in [m for m in models1 if m not in models2]:
         changes.append(create_model(models1[name]))
 
     # Remove models
-    for name in set(models2) - set(models1):
+    for name in [m for m in models2 if m not in models1]:
         changes.append(remove_model(models2[name]))
 
     for name, model1 in models1.items():

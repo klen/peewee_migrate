@@ -19,7 +19,7 @@ def test_cli(tmpdir):
     result = runner.invoke(cli, [
         'migrate', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:'])
     assert result.exit_code == 0
-    assert 'Migrations are completed: 001_test' in result.output
+    assert 'Migrations completed: 001_test' in result.output
 
     result = runner.invoke(cli, [
         'rollback', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '001_test'])

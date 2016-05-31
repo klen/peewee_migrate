@@ -58,7 +58,7 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
     router = get_router(directory, database, verbose)
     migrations = router.run(name, fake=fake)
     if migrations:
-        click.echo('Migrations are completed: %s' % ', '.join(migrations))
+        click.echo('Migrations completed: %s' % ', '.join(migrations))
 
 
 @cli.command()
