@@ -23,5 +23,4 @@ def test_auto():
         tag = pw.ForeignKeyField(Tag_)
 
     changes = diff_one(Person, Person_, migrator=migrator)
-    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
     assert len(changes) == 3

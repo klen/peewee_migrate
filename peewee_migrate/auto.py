@@ -13,8 +13,7 @@ FIELD_TO_PARAMS = {
         'max_digits': f.max_digits, 'decimal_places': f.decimal_places,
         'auto_round': f.auto_round, 'rounding': f.rounding},
     pw.ForeignKeyField: lambda f: {
-       'related_name': f.related_name, 'on_delete': f.on_delete,
-        'on_update': f.on_update , 'to_field': f.to_field.name
+       'related_name': f.related_name, 'to_field': f.to_field.name
     },
 }
 
