@@ -12,9 +12,7 @@ FIELD_TO_PARAMS = {
     pw.DecimalField: lambda f: {
         'max_digits': f.max_digits, 'decimal_places': f.decimal_places,
         'auto_round': f.auto_round, 'rounding': f.rounding},
-    pw.ForeignKeyField: lambda f: {
-       'related_name': f.related_name, 'to_field': f.to_field.name
-    },
+    pw.ForeignKeyField: lambda f: {'to_field': f.to_field.name},
 }
 
 
