@@ -9,17 +9,19 @@ def test_auto():
     router.run()
     migrator = router.migrator
     models = migrator.orm.values()
-    Person_, _ = models
+    Person_, Tag_ = models
 
     code = model_to_code(Person_)
     assert code
 
-    changes = diff_many(models, [])
+    changes = diff_many(models, [], migrator=migrator)
     assert len(changes) == 2
 
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024)
+        tag = pw.ForeignKeyField(Tag_)
 
-    changes = diff_one(Person_, Person)
-    assert len(changes) == 2
+    changes = diff_one(Person, Person_, migrator=migrator)
+    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+    assert len(changes) == 3

@@ -65,6 +65,7 @@ Getting help: ::
     Commands:
         create   Create migration.
         migrate  Run migrations.
+        rollback Rollback migration.
 
 Create migration: ::
 
@@ -75,6 +76,7 @@ Create migration: ::
         Create migration.
 
     Options:
+        --auto TEXT       Create migrations automatically. Set path to your models module.
         --database TEXT   Database connection
         --directory TEXT  Directory where migrations are stored
         -v, --verbose

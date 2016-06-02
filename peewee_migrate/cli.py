@@ -2,10 +2,8 @@
 import os
 import re
 import sys
-from importlib import import_module
 
 import click
-import peewee as pw
 from playhouse.db_url import connect
 
 from peewee_migrate.compat import string_types
@@ -80,5 +78,6 @@ def create(name, database=None, auto=False, directory=None, verbose=None):
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
 def rollback(name, database=None, directory=None, verbose=None):
+    """ Rollback migration."""
     router = get_router(directory, database, verbose)
     router.rollback(name)
