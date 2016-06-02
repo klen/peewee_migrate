@@ -39,9 +39,11 @@ class Column(VanilaColumn):
         self.related_name = None
         self.to_field = None
 
-        if isinstance(field, pw.ForeignKeyField) and migrator and \
-                    field.rel_model._meta.name in migrator.orm:
-            self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.name
+        if isinstance(field, pw.ForeignKeyField):
+            if migrator and  field.rel_model._meta.name in migrator.orm:
+                self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.name
+            else:
+                self.rel_model = field.rel_model.__name__
 
     def get_field_parameters(self):
         params = super(Column, self).get_field_parameters()
