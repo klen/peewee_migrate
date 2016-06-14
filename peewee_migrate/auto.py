@@ -196,4 +196,4 @@ def change_fields(Model, *fields, **kwargs):
 
 def change_not_null(Model, name, null):
     operation = 'drop_not_null' if null else 'add_not_null'
-    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, name)
+    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, repr(name))

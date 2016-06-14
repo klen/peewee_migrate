@@ -24,3 +24,4 @@ def test_auto():
 
     changes = diff_one(Person, Person_, migrator=migrator)
     assert len(changes) == 4
+    assert changes[-1] == "migrator.drop_not_null('person', 'last_name')"
