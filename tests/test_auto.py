@@ -19,8 +19,8 @@ def test_auto():
 
     class Person(pw.Model):
         first_name = pw.IntegerField()
-        last_name = pw.CharField(max_length=1024)
+        last_name = pw.CharField(max_length=1024, null=True)
         tag = pw.ForeignKeyField(Tag_)
 
     changes = diff_one(Person, Person_, migrator=migrator)
-    assert len(changes) == 3
+    assert len(changes) == 4

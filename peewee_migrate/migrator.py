@@ -236,19 +236,21 @@ class Migrator(object):
         return model
 
     @get_model
-    def add_not_null(self, model, name):
+    def add_not_null(self, model, *names):
         """Add not null."""
-        field = model._meta.fields[name]
-        field.null = False
-        self.ops.append(self.migrator.add_not_null(model._meta.db_table, field.db_column))
+        for name in names:
+            field = model._meta.fields[name]
+            field.null = False
+            self.ops.append(self.migrator.add_not_null(model._meta.db_table, field.db_column))
         return model
 
     @get_model
-    def drop_not_null(self, model, name):
+    def drop_not_null(self, model, *names):
         """Drop not null."""
-        field = model._meta.fields[name]
-        field.null = True
-        self.ops.append(self.migrator.drop_not_null(model._meta.db_table, field.db_column))
+        for name in names:
+            field = model._meta.fields[name]
+            field.null = True
+            self.ops.append(self.migrator.drop_not_null(model._meta.db_table, field.db_column))
         return model
 
     @get_model

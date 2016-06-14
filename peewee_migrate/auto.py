@@ -77,13 +77,21 @@ def diff_one(model1, model2, **kwargs):
 
     # Change fields
     fields_ = []
+    nulls_ = []
     for name in set(fields1) - names1 - names2:
         field1, field2 = fields1[name], fields2[name]
-        if compare_fields(field1, field2):
+        diff = compare_fields(field1, field2)
+        if diff:
+            diff = dict(diff)
             fields_.append(field1)
+            if 'null' in diff:
+                nulls_.append((name, diff['null']))
 
     if fields_:
         changes.append(change_fields(model1, *fields_, **kwargs))
+
+    for name, null in nulls_:
+        changes.append(change_not_null(model1, name, null))
 
     return changes
 
@@ -161,10 +169,12 @@ def field_to_code(field, space=True, **kwargs):
 def compare_fields(field1, field2, **kwargs):
     field_cls1, field_cls2 = type(field1), type(field2)
     if field_cls1 != field_cls2:  # noqa
-        return True
+        return {'cls': True}
 
     params1 = field_to_params(field1)
+    params1['null'] =  field1.null
     params2 = field_to_params(field2)
+    params2['null'] =  field2.null
 
     return set(params1.items()) - set(params2.items())
 
@@ -182,3 +192,8 @@ def change_fields(Model, *fields, **kwargs):
     return "migrator.change_fields('%s', %s)" % (
         Model._meta.db_table, (',' + NEWLINE).join([field_to_code(f, False) for f in fields])
     )
+
+
+def change_not_null(Model, name, null):
+    operation = 'drop_not_null' if null else 'add_not_null'
+    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, name)
