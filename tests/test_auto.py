@@ -9,7 +9,8 @@ def test_auto():
     router.run()
     migrator = router.migrator
     models = migrator.orm.values()
-    Person_, Tag_ = models
+    Person_ = migrator.orm['person']
+    Tag_ = migrator.orm['tag']
 
     code = model_to_code(Person_)
     assert code
