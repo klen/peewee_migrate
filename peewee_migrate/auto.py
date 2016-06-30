@@ -18,7 +18,7 @@ FIELD_TO_PARAMS = {
 
 class Column(VanilaColumn):
 
-    def __init__(self, field, migrator=None):
+    def __init__(self, field, migrator=None):  # noqa
         self.name = field.name
         self.field_class = type(field)
         self.nullable = field.null
@@ -38,7 +38,8 @@ class Column(VanilaColumn):
         self.to_field = None
 
         if isinstance(field, pw.ForeignKeyField):
-            if migrator and  field.rel_model._meta.name in migrator.orm:
+            self.to_field = field.to_field.name
+            if migrator and field.rel_model._meta.name in migrator.orm:
                 self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.name
             else:
                 self.rel_model = field.rel_model.__name__
@@ -173,9 +174,9 @@ def compare_fields(field1, field2, **kwargs):
         return {'cls': True}
 
     params1 = field_to_params(field1)
-    params1['null'] =  field1.null
+    params1['null'] = field1.null
     params2 = field_to_params(field2)
-    params2['null'] =  field2.null
+    params2['null'] = field2.null
 
     return dict(set(params1.items()) - set(params2.items()))
 
