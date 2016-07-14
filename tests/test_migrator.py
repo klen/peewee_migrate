@@ -56,3 +56,10 @@ def test_migrator():
     migrator.run()
     order = Order.get()
     assert order.identifier == 77
+
+    migrator.add_index(Order, 'identifier', 'customer')
+    migrator.run()
+    assert Order._meta.indexes
+
+    migrator.drop_index(Order, 'identifier', 'customer')
+    assert not Order._meta.indexes

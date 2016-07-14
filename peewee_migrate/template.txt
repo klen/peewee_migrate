@@ -12,7 +12,7 @@
     > migrator.rename_field(Model, old_field_name, new_field_name)
     > migrator.rename_table(Model, new_table_name)
     > migrator.add_index(Model, *col_names, unique=False)
-    > migrator.drop_index(Model, index_name)
+    > migrator.drop_index(Model, *col_names)
     > migrator.add_not_null(Model, *field_names)
     > migrator.drop_not_null(Model, *field_names)
     > migrator.add_default(Model, field_name, default)

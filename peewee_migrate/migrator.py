@@ -224,14 +224,28 @@ class Migrator(object):
     @get_model
     def add_index(self, model, *columns, **kwargs):
         """Create indexes."""
-        unique = kwargs.pop('unique')
+        unique = kwargs.pop('unique', False)
         model._meta.indexes.append((columns, unique))
-        self.ops.append(self.migrator.add_index(model._meta.db_table, columns, unique=unique))
+        columns_ = []
+        for col in columns:
+            field = model._meta.fields.get(col)
+            if isinstance(field, pw.ForeignKeyField):
+                col = col + '_id'
+            columns_.append(col)
+        self.ops.append(self.migrator.add_index(model._meta.db_table, columns_, unique=unique))
         return model
 
     @get_model
-    def drop_index(self, model, index_name):
+    def drop_index(self, model, *columns):
         """Drop indexes."""
+        columns_ = []
+        for col in columns:
+            field = model._meta.fields.get(col)
+            if isinstance(field, pw.ForeignKeyField):
+                col = col + '_id'
+            columns_.append(col)
+        index_name = self.migrator.database.compiler().index_name(model._meta.db_table, columns_)
+        model._meta.indexes = [(cols, _) for (cols, _) in model._meta.indexes if columns != cols]
         self.ops.append(self.migrator.drop_index(model._meta.db_table, index_name))
         return model
 
