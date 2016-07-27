@@ -28,11 +28,14 @@ def test_migrator():
 
     migrator.drop_columns('order', 'finished', 'customer', 'uid')
     assert 'finished' not in Order._meta.fields
+    assert not hasattr(Order, 'customer')
     migrator.run()
 
     migrator.add_columns(Order, customer=pw.ForeignKeyField(Customer, null=True))
     assert 'customer' in Order._meta.fields
+    assert Order.customer.name == 'customer'
     migrator.run()
+    assert Order.customer.name == 'customer'
 
     migrator.rename_column(Order, 'number', 'identifier')
     assert 'identifier' in Order._meta.fields
@@ -63,3 +66,6 @@ def test_migrator():
 
     migrator.drop_index(Order, 'identifier', 'customer')
     assert not Order._meta.indexes
+
+    migrator.remove_fields(Order, 'customer')
+    assert not hasattr(Order, 'customer')

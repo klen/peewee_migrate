@@ -45,6 +45,25 @@ class SchemaMigrator(ScM):
         """Execute raw SQL."""
         return Clause(SQL(sql, *params))
 
+    @operation
+    def alter_add_column(self, table, column_name, field):
+        """Keep fieldname unchanged."""
+        # Make field null at first.
+        field_null, field.null = field.null, True
+        field.db_column = column_name
+        field_clause = self.database.compiler().field_definition(field)
+        field.null = field_null
+        parts = [
+            SQL('ALTER TABLE'),
+            Entity(table),
+            SQL('ADD COLUMN'),
+            field_clause]
+        if isinstance(field, pw.ForeignKeyField):
+            parts.extend(self.get_inline_fk_sql(field))
+        else:
+            field.name = column_name
+        return Clause(*parts)
+
 
 class PostgresqlMigrator(SchemaMigrator, PgM):
 
