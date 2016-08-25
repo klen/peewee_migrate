@@ -46,7 +46,7 @@ class BaseRouter(object):
         """Create a migration."""
         migrate = rollback = ''
         if auto:
-            if isinstance(auto, str):
+            if isinstance(auto, basestring):
                 try:
                     auto = import_module(auto)
                 except ImportError:
