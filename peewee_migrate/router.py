@@ -24,8 +24,9 @@ class BaseRouter(object):
 
     """Abstract base class for router."""
 
-    def __init__(self, database, logger=LOGGER):
+    def __init__(self, database, migrations_table='migratehistory', logger=LOGGER):
         self.database = database
+        self.migrations_table = migrations_table
         self.logger = logger
         if not isinstance(self.database, (pw.Database, pw.Proxy)):
             raise RuntimeError('Invalid database: %s' % database)
@@ -35,6 +36,7 @@ class BaseRouter(object):
         """Ensure that migrations has prepared to run."""
         # Initialize MigrationHistory model
         MigrateHistory._meta.database = self.database
+        MigrateHistory._meta.db_table = self.migrations_table
         MigrateHistory.create_table(True)
         return MigrateHistory
 
@@ -46,7 +48,7 @@ class BaseRouter(object):
         """Create a migration."""
         migrate = rollback = ''
         if auto:
-            if isinstance(auto, str):
+            if isinstance(auto, string_types):
                 try:
                     auto = import_module(auto)
                 except ImportError:
