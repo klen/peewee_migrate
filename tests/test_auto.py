@@ -21,8 +21,9 @@ def test_auto():
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True)
-        tag = pw.ForeignKeyField(Tag_)
+        tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE')
 
     changes = diff_one(Person, Person_, migrator=migrator)
     assert len(changes) == 4
+    assert "on_delete='CASCADE'" in changes[0]
     assert changes[-1] == "migrator.drop_not_null('person', 'last_name')"

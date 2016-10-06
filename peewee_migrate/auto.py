@@ -7,12 +7,22 @@ from playhouse.reflection import Column as VanilaColumn
 INDENT = '    '
 NEWLINE = '\n' + INDENT
 
+
+def fk_to_params(field):
+    params = {}
+    if field.on_delete is not None:
+        params['on_delete'] = field.on_delete
+    if field.on_update is not None:
+        params['on_update'] = field.on_update
+    return params
+
+
 FIELD_TO_PARAMS = {
     pw.CharField: lambda f: {'max_length': f.max_length},
     pw.DecimalField: lambda f: {
         'max_digits': f.max_digits, 'decimal_places': f.decimal_places,
         'auto_round': f.auto_round, 'rounding': f.rounding},
-    pw.ForeignKeyField: lambda f: {'to_field': f.to_field.name},
+    pw.ForeignKeyField: fk_to_params,
 }
 
 
