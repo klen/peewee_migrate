@@ -1,9 +1,10 @@
 import peewee as pw
 from playhouse.migrate import (
-    SchemaMigrator as ScM,
+    MySQLMigrator as MqM,
     PostgresqlMigrator as PgM,
+    SchemaMigrator as ScM,
     SqliteMigrator as SqM,
-    Operation, SQL, Entity, Clause, PostgresqlDatabase, operation, SqliteDatabase
+    Operation, SQL, Entity, Clause, PostgresqlDatabase, operation, SqliteDatabase, MySQLDatabase
 )
 
 from peewee_migrate import LOGGER
@@ -20,6 +21,8 @@ class SchemaMigrator(ScM):
             return PostgresqlMigrator(database)
         if isinstance(database, SqliteDatabase):
             return SqliteMigrator(database)
+        if isinstance(database, MySQLDatabase):
+            return MySQLMigrator(database)
         return super(SchemaMigrator, cls).from_database(database)
 
     def drop_table(self, model, cascade=True):
@@ -63,6 +66,18 @@ class SchemaMigrator(ScM):
         else:
             field.name = column_name
         return Clause(*parts)
+
+
+class MySQLMigrator(SchemaMigrator, MqM):
+
+    """Support the migrations in MySQL."""
+
+    def alter_change_column(self, table, column_name, field):
+        """Support change columns."""
+        clause = super(MySQLMigrator, self).alter_change_column(table, column_name, field)
+        field_clause = clause.nodes[-1]
+        field_clause.nodes.insert(1, SQL('TYPE'))
+        return clause
 
 
 class PostgresqlMigrator(SchemaMigrator, PgM):
