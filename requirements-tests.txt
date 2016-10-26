@@ -2,4 +2,4 @@
 -r requirements.txt
 
 ipdb
-pytest
+pytest==3.0.3
