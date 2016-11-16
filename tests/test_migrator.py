@@ -29,6 +29,7 @@ def test_migrator():
     migrator.drop_columns('order', 'finished', 'customer', 'uid')
     assert 'finished' not in Order._meta.fields
     assert not hasattr(Order, 'customer')
+    assert not hasattr(Order, 'customer_id')
     migrator.run()
 
     migrator.add_columns(Order, customer=pw.ForeignKeyField(Customer, null=True))
