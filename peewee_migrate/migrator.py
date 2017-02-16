@@ -227,7 +227,10 @@ class Migrator(object):
         model._meta.remove_field(field.name)
         delattr(model, field.name)
         if isinstance(field, pw.ForeignKeyField):
-            delattr(model, field.db_column)
+            obj_id_name = field.db_column
+            if field.db_column == field.name:
+                obj_id_name += '_id'
+            delattr(model, obj_id_name)
             delattr(field.rel_model, field.related_name)
             del field.rel_model._meta.reverse_rel[field.related_name]
 
