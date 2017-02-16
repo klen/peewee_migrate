@@ -199,6 +199,8 @@ def field_to_params(field, **kwargs):
             not callable(field.default) and \
             isinstance(field.default, Hashable):
         params['default'] = field.default
+
+    params.pop('related_name', None)  # Ignore related_name
     return params
 
 
