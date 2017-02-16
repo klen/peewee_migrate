@@ -17,7 +17,7 @@ def test_migrator():
         number = pw.CharField()
         uid = pw.CharField(unique=True)
 
-        customer = pw.ForeignKeyField(Customer)
+        customer_id = pw.ForeignKeyField(Customer, db_column='customer_id')
 
     assert Order == migrator.orm['order']
     migrator.run()
@@ -26,10 +26,10 @@ def test_migrator():
     assert 'finished' in Order._meta.fields
     migrator.run()
 
-    migrator.drop_columns('order', 'finished', 'customer', 'uid')
+    migrator.drop_columns('order', 'finished', 'customer_id', 'uid')
     assert 'finished' not in Order._meta.fields
-    assert not hasattr(Order, 'customer')
     assert not hasattr(Order, 'customer_id')
+    assert not hasattr(Order, 'customer_id_id')
     migrator.run()
 
     migrator.add_columns(Order, customer=pw.ForeignKeyField(Customer, null=True))
