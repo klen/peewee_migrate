@@ -1,4 +1,4 @@
-"""Peewee migrations -- {prefix}{name}.
+"""Peewee migrations -- {name}.
 
 Some examples (model - class or model name)::
 
