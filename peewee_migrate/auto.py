@@ -14,6 +14,8 @@ def fk_to_params(field):
         params['on_delete'] = field.on_delete
     if field.on_update is not None:
         params['on_update'] = field.on_update
+    if field._related_name is not None:
+        params['related_name'] = field._related_name
     return params
 
 

@@ -1,4 +1,4 @@
-VIRTUAL_ENV	?= '.env'
+VIRTUAL_ENV	?= 'env'
 
 all: $(VIRTUAL_ENV)
 
