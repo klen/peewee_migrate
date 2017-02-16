@@ -199,7 +199,8 @@ class Router(BaseRouter):
         name = prefix + name + '.py'
         path = os.path.join(self.migrate_dir, name)
         with open(path, 'w') as f:
-            f.write(MIGRATE_TEMPLATE.format(migrate=migrate, rollback=rollback))
+            f.write(MIGRATE_TEMPLATE.format(
+                migrate=migrate, rollback=rollback, prefix=prefix, name=name))
 
         return path
 
