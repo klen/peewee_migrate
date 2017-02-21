@@ -111,6 +111,7 @@ def diff_one(model1, model2, **kwargs):
 
 
 def diff_many(models1, models2, migrator=None, reverse=False):
+    """Calculate changes for migrations from models2 to models1."""
     models1 = pw.sort_models_topologically(models1)
     models2 = pw.sort_models_topologically(models2)
 
