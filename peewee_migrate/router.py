@@ -87,7 +87,8 @@ class BaseRouter(object):
 
     def merge(self, name='initial'):
         """Merge migrations into one."""
-        migrate = compile_migrations(self.migrator, [])
+        migrator = Migrator(self.database)
+        migrate = compile_migrations(migrator, self.migrator.orm.values())
         if not migrate:
             return self.logger.error("Can't merge migrations")
 
