@@ -40,6 +40,7 @@ def test_router():
     with mock.patch('os.remove') as mocked:
         router.merge()
         assert mocked.call_count == 3
+        assert mocked.call_args[0][0] == 'tests/migrations/003_tespy.py'
         assert MigrateHistory.select().count() == 1
 
     os.remove('tests/migrations/001_initial.py')
