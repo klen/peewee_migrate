@@ -1,6 +1,7 @@
 """ Tests for `peewee_migrate` module. """
 import peewee as pw
 import os
+import mock
 
 
 def test_router():
@@ -36,5 +37,11 @@ def test_router():
     assert router.diff == ['003_tespy']
     assert migrations.count() == 2
 
+    with mock.patch('os.remove') as mocked:
+        router.merge()
+        assert mocked.call_count == 3
+        assert MigrateHistory.select().count() == 1
+
+    os.remove('tests/migrations/001_initial.py')
 
 # pylama:ignore=W0621

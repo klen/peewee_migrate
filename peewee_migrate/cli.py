@@ -52,7 +52,7 @@ def cli():
 @click.option('--fake', default=False, help=("Run migration as fake."))
 @click.option('-v', '--verbose', count=True)
 def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
-    """ Run migrations. """
+    """Migrate database."""
     router = get_router(directory, database, verbose)
     migrations = router.run(name, fake=fake)
     if migrations:
@@ -67,7 +67,7 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
 def create(name, database=None, auto=False, directory=None, verbose=None):
-    """ Create migration. """
+    """Create a migration."""
     router = get_router(directory, database, verbose)
     router.create(name, auto=auto)
 
@@ -78,6 +78,30 @@ def create(name, database=None, auto=False, directory=None, verbose=None):
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
 def rollback(name, database=None, directory=None, verbose=None):
-    """ Rollback migration."""
+    """Rollback a migration with given name."""
     router = get_router(directory, database, verbose)
     router.rollback(name)
+
+
+@cli.command()
+@click.option('--database', default=None, help="Database connection")
+@click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('-v', '--verbose', count=True)
+def list(database=None, directory=None, verbose=None):
+    """List migrations."""
+    router = get_router(directory, database, verbose)
+    click.echo('Migrations are done:')
+    click.echo('\n'.join(router.done))
+    click.echo('')
+    click.echo('Migrations are undone:')
+    click.echo('\n'.join(router.diff))
+
+
+@cli.command()
+@click.option('--database', default=None, help="Database connection")
+@click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('-v', '--verbose', count=True)
+def merge(database=None, directory=None, verbose=None):
+    """Merge migrations into one."""
+    router = get_router(directory, database, verbose)
+    router.merge()
