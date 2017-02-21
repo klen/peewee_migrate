@@ -24,3 +24,7 @@ def test_cli(tmpdir):
     result = runner.invoke(cli, [
         'rollback', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '001_test'])
     assert result.exit_code == -1
+
+    result = runner.invoke(cli, [
+        'list', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:'])
+    assert 'Migrations are undone:\n001_test' in result.output

@@ -2,14 +2,16 @@
     The package description.
 
 """
-import logging
-import peewee as pw
 import datetime as dt
+import logging
+
+import peewee as pw
+
 
 # Package information
 # ===================
 
-__version__ = "0.8.5"
+__version__ = "0.9.0"
 __project__ = "peewee_migrate"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
@@ -29,6 +31,5 @@ class MigrateHistory(pw.Model):
     def __unicode__(self):
         """String representation."""
         return self.name
-
 
 from .router import Migrator, Router # noqa
