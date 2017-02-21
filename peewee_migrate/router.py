@@ -220,7 +220,8 @@ class Router(BaseRouter):
         """Remove migrations from fs."""
         super(Router, self).clear()
         for name in self.todo:
-            os.remove(name + '.py')
+            filename = os.path.join(self.migrate_dir, name + '.py')
+            os.remove(filename)
 
 
 class ModuleRouter(BaseRouter):
