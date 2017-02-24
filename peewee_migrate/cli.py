@@ -49,7 +49,7 @@ def cli():
 @click.option('--name', default=None, help="Select migration")
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
-@click.option('--fake', default=False, help=("Run migration as fake."))
+@click.option('--fake', is_flag=True, default=False, help=("Run migration as fake."))
 @click.option('-v', '--verbose', count=True)
 def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
     """Migrate database."""
