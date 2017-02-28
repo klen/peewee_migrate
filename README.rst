@@ -150,7 +150,8 @@ Development of starter happens at github: https://github.com/klen/peewee_migrate
 Contributors
 =============
 
-* klen_ (Kirill Klenov)
+See `AUTHORS.rst`
+
 
 .. _license:
 
