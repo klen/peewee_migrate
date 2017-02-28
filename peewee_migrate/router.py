@@ -24,9 +24,10 @@ class BaseRouter(object):
 
     """Abstract base class for router."""
 
-    def __init__(self, database, migrate_table='migratehistory', logger=LOGGER):
+    def __init__(self, database, migrate_table='migratehistory', ignore=None, logger=LOGGER):
         self.database = database
         self.migrate_table = migrate_table
+        self.ignore = None
         self.logger = logger
         if not isinstance(self.database, (pw.Database, pw.Proxy)):
             raise RuntimeError('Invalid database: %s' % database)
@@ -70,6 +71,9 @@ class BaseRouter(object):
                 models = load_models(auto)
             except ImportError:
                 return self.logger.error("Can't import models module: %s", auto)
+
+            if self.ignore:
+                models = [m for m in models if m._meta.name not in self.ignore]
 
             for migration in self.diff:
                 self.run_one(migration, self.migrator, fake=True)
