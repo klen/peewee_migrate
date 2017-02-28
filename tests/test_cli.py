@@ -17,6 +17,12 @@ def test_cli(tmpdir):
     assert result.exit_code == 0
 
     result = runner.invoke(cli, [
+        'migrate', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '-v', '--fake'])
+    assert result.exit_code == 0
+    assert 'Migrations completed: 001_test' in result.output
+    assert 'add_column' not in result.output
+
+    result = runner.invoke(cli, [
         'migrate', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:'])
     assert result.exit_code == 0
     assert 'Migrations completed: 001_test' in result.output
