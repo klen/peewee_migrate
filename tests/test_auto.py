@@ -14,6 +14,7 @@ def test_auto():
 
     code = model_to_code(Person_)
     assert code
+    assert 'db_table = "person"' in code
 
     changes = diff_many(models, [], migrator=migrator)
     assert len(changes) == 2
