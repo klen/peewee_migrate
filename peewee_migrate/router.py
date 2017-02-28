@@ -27,7 +27,7 @@ class BaseRouter(object):
     def __init__(self, database, migrate_table='migratehistory', ignore=None, logger=LOGGER):
         self.database = database
         self.migrate_table = migrate_table
-        self.ignore = None
+        self.ignore = ignore
         self.logger = logger
         if not isinstance(self.database, (pw.Database, pw.Proxy)):
             raise RuntimeError('Invalid database: %s' % database)
