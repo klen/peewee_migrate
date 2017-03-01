@@ -149,8 +149,12 @@ def model_to_code(Model, **kwargs):
         field_to_code(field, **kwargs) for field in Model._meta.sorted_fields
         if not (isinstance(field, pw.PrimaryKeyField) and field.name == 'id')
     ])
-    meta = INDENT + NEWLINE.join(['class Meta:',
-                                  INDENT + 'db_table = "%s"' % Model._meta.db_table])
+    meta = INDENT + NEWLINE.join([
+        'class Meta:',
+        INDENT + 'db_table = "%s"' % Model._meta.db_table,
+        (INDENT + 'schema = "%s"' % Model._meta.schema) if Model._meta.schema else '',
+    ])
+
     return template.format(
         classname=Model.__name__,
         fields=fields, meta=meta
