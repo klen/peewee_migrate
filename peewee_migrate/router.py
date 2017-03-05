@@ -248,6 +248,8 @@ class ModuleRouter(BaseRouter):
 def load_models(module):
     """Load models from given module."""
     if isinstance(module, string_types):
+        import sys
+        sys.path.insert(0, os.getcwd())
         module = import_module(module)
 
     if isinstance(module, ModuleType):
