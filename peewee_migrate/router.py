@@ -252,7 +252,8 @@ def load_models(module):
 
     if isinstance(module, ModuleType):
         return list(filter(
-            lambda m: isinstance(m, type) and issubclass(m, pw.Model),
+            lambda m: isinstance(m, type) and issubclass(m, pw.Model) and
+            hasattr(m, '_meta'),
             (getattr(module, model) for model in dir(module))))
 
     return module
