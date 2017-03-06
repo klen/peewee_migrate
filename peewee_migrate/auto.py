@@ -2,7 +2,7 @@ from collections import Hashable, OrderedDict
 
 import peewee as pw
 from playhouse.reflection import Column as VanilaColumn
-
+import datetime
 
 INDENT = '    '
 NEWLINE = '\n' + INDENT
@@ -19,12 +19,20 @@ def fk_to_params(field):
     return params
 
 
+def dtf_to_params(field):
+    params = {}
+    if not isinstance(field.formats, list):
+        params['formats'] = field.formats
+    return params
+
+
 FIELD_TO_PARAMS = {
     pw.CharField: lambda f: {'max_length': f.max_length},
     pw.DecimalField: lambda f: {
         'max_digits': f.max_digits, 'decimal_places': f.decimal_places,
         'auto_round': f.auto_round, 'rounding': f.rounding},
     pw.ForeignKeyField: fk_to_params,
+    pw.DateTimeField: dtf_to_params,
 }
 
 
@@ -39,8 +47,13 @@ class Column(VanilaColumn):
         self.index = field.index
         self.unique = field.unique
         self.params = {}
-        if field.default is not None and not callable(field.default):
-            self.params['default'] = field.default
+        if field.default is not None:
+            if not callable(field.default):
+                self.params['default'] = field.default
+            elif field.default.__self__ is datetime.datetime:
+                self.params['default'] = 'dt.datetime.now'
+            else:
+                self.params['default'] = 'function_check'
 
         if self.field_class in FIELD_TO_PARAMS:
             self.params.update(FIELD_TO_PARAMS[self.field_class](field))
@@ -54,11 +67,14 @@ class Column(VanilaColumn):
             if migrator and field.rel_model._meta.name in migrator.orm:
                 self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.name
             else:
-                self.rel_model = field.rel_model.__name__
+                self.rel_model = "migrator.orm['%s']" %\
+                    field.rel_model._meta.db_table
 
     def get_field_parameters(self):
         params = super(Column, self).get_field_parameters()
-        params.update({k: repr(v) for k, v in self.params.items()})
+        params.update(
+            {k: repr(v) if v != 'dt.datetime.now' else v
+             for k, v in self.params.items()})
         return params
 
     def get_field(self, space=' '):
@@ -91,21 +107,33 @@ def diff_one(model1, model2, **kwargs):
     # Change fields
     fields_ = []
     nulls_ = []
+    uniques_ = []
     for name in set(fields1) - names1 - names2:
         field1, field2 = fields1[name], fields2[name]
         diff = compare_fields(field1, field2)
         null = diff.pop('null', None)
+        unique = diff.pop('unique', None)
+
         if diff:
             fields_.append(field1)
 
         if null is not None:
             nulls_.append((name, null))
 
+        if unique is not None:
+            uniques_.append((name, unique))
+
     if fields_:
         changes.append(change_fields(model1, *fields_, **kwargs))
 
     for name, null in nulls_:
         changes.append(change_not_null(model1, name, null))
+
+    for name, unique in uniques_:
+        if unique is True:
+            changes.append(add_index(model1, name, unique))
+        else:
+            changes.append(drop_index(model1, name))
 
     return changes
 
@@ -143,6 +171,7 @@ def diff_many(models1, models2, migrator=None, reverse=False):
 def model_to_code(Model, **kwargs):
     template = """class {classname}(pw.Model):
 {fields}
+
 {meta}
 """
     fields = INDENT + NEWLINE.join([
@@ -153,6 +182,9 @@ def model_to_code(Model, **kwargs):
         'class Meta:',
         INDENT + 'db_table = "%s"' % Model._meta.db_table,
         (INDENT + 'schema = "%s"' % Model._meta.schema) if Model._meta.schema else '',
+        (INDENT + 'primary_key = pw.CompositeKey{0}'.format(Model._meta.primary_key.field_names))
+        if isinstance(Model._meta.primary_key, pw.CompositeKey) else '',
+        (INDENT + 'order_by = {0}'.format(get_order_by(Model))) if Model._meta.order_by else '',
     ])
 
     return template.format(
@@ -195,8 +227,10 @@ def compare_fields(field1, field2, **kwargs):
 
     params1 = field_to_params(field1)
     params1['null'] = field1.null
+    params1['unique'] = field1.unique
     params2 = field_to_params(field2)
     params2['null'] = field2.null
+    params2['unique'] = field2.unique
 
     return dict(set(params1.items()) - set(params2.items()))
 
@@ -220,4 +254,22 @@ def change_fields(Model, *fields, **kwargs):
 
 def change_not_null(Model, name, null):
     operation = 'drop_not_null' if null else 'add_not_null'
+    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, repr(name))
+
+
+def get_order_by(Model):
+    return tuple(
+        ['-' + field.name
+         if field._ordering == 'DESC' else field.name
+         for field in Model._meta.order_by])
+
+
+def add_index(Model, name, unique):
+    operation = 'add_index'
+    return "migrator.%s('%s', %s, unique=%s)" %\
+        (operation, Model._meta.db_table, repr(name), unique)
+
+
+def drop_index(Model, name):
+    operation = 'drop_index'
     return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, repr(name))
