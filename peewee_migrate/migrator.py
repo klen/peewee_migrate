@@ -216,9 +216,6 @@ class Migrator(object):
                             model._meta.db_table, field.db_column))
                 self.ops.append(self.migrator.change_column(
                     model._meta.db_table, field.db_column, field))
-                if field.unique:
-                    self.ops.append(self.migrator.add_index(
-                        model._meta.db_table, (field.db_column,), unique=True))
         return model
 
     change_fields = change_columns
@@ -286,6 +283,7 @@ class Migrator(object):
         for col in columns:
             field = model._meta.fields.get(col)
             field.unique = unique
+            field.index = True
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)
@@ -299,6 +297,7 @@ class Migrator(object):
         for col in columns:
             field = model._meta.fields.get(col)
             field.unique = False
+            field.index = False
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)

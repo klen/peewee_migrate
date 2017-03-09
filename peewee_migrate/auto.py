@@ -107,12 +107,12 @@ def diff_one(model1, model2, **kwargs):
     # Change fields
     fields_ = []
     nulls_ = []
-    uniques_ = []
+    indexes_ = []
     for name in set(fields1) - names1 - names2:
         field1, field2 = fields1[name], fields2[name]
         diff = compare_fields(field1, field2)
         null = diff.pop('null', None)
-        unique = diff.pop('unique', None)
+        index = diff.pop('index', None)
 
         if diff:
             fields_.append(field1)
@@ -120,8 +120,8 @@ def diff_one(model1, model2, **kwargs):
         if null is not None:
             nulls_.append((name, null))
 
-        if unique is not None:
-            uniques_.append((name, unique))
+        if index is not None:
+            indexes_.append((name, index[0], index[1]))
 
     if fields_:
         changes.append(change_fields(model1, *fields_, **kwargs))
@@ -129,8 +129,8 @@ def diff_one(model1, model2, **kwargs):
     for name, null in nulls_:
         changes.append(change_not_null(model1, name, null))
 
-    for name, unique in uniques_:
-        if unique is True:
+    for name, index, unique in indexes_:
+        if index is True or (index is False and unique is True):
             changes.append(add_index(model1, name, unique))
         else:
             changes.append(drop_index(model1, name))
@@ -227,10 +227,8 @@ def compare_fields(field1, field2, **kwargs):
 
     params1 = field_to_params(field1)
     params1['null'] = field1.null
-    params1['unique'] = field1.unique
     params2 = field_to_params(field2)
     params2['null'] = field2.null
-    params2['unique'] = field2.unique
 
     return dict(set(params1.items()) - set(params2.items()))
 
@@ -241,6 +239,8 @@ def field_to_params(field, **kwargs):
             not callable(field.default) and \
             isinstance(field.default, Hashable):
         params['default'] = field.default
+
+    params['index'] = field.index, field.unique
 
     params.pop('related_name', None)  # Ignore related_name
     return params
