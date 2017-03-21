@@ -16,6 +16,7 @@ def fk_to_params(field):
         params['on_update'] = field.on_update
     if field._related_name is not None:
         params['related_name'] = field._related_name
+    params['rel_model'] = "migrator.orm['%s']" % field.rel_model._meta.db_table
     return params
 
 
@@ -64,16 +65,12 @@ class Column(VanilaColumn):
 
         if isinstance(field, pw.ForeignKeyField):
             self.to_field = field.to_field.name
-            if migrator and field.rel_model._meta.name in migrator.orm:
-                self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.name
-            else:
-                self.rel_model = "migrator.orm['%s']" %\
-                    field.rel_model._meta.db_table
 
     def get_field_parameters(self):
         params = super(Column, self).get_field_parameters()
+        repr_ignore = ['dt.datetime.now', 'rel_model']
         params.update(
-            {k: repr(v) if v != 'dt.datetime.now' else v
+            {k: repr(v) if v not in repr_ignore and k not in repr_ignore else v
              for k, v in self.params.items()})
         return params
 
@@ -152,6 +149,11 @@ def diff_many(models1, models2, migrator=None, reverse=False):
 
     changes = []
 
+    for name, model1 in models1.items():
+        if name not in models2:
+            continue
+        changes += diff_one(model1, models2[name], migrator=migrator)
+
     # Add models
     for name in [m for m in models1 if m not in models2]:
         changes.append(create_model(models1[name], migrator=migrator))
@@ -159,11 +161,6 @@ def diff_many(models1, models2, migrator=None, reverse=False):
     # Remove models
     for name in [m for m in models2 if m not in models1]:
         changes.append(remove_model(models2[name]))
-
-    for name, model1 in models1.items():
-        if name not in models2:
-            continue
-        changes += diff_one(model1, models2[name], migrator=migrator)
 
     return changes
 
