@@ -11,7 +11,7 @@ import peewee as pw
 # Package information
 # ===================
 
-__version__ = "0.11.1"
+__version__ = "0.12.0"
 __project__ = "peewee_migrate"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
@@ -19,6 +19,7 @@ __license__ = "BSD"
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.INFO)
 
 
 class MigrateHistory(pw.Model):

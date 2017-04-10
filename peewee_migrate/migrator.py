@@ -70,14 +70,15 @@ class SchemaMigrator(ScM):
 
 class MySQLMigrator(SchemaMigrator, MqM):
 
-    """Support the migrations in MySQL."""
-
-    def alter_change_column(self, table, column_name, field):
-        """Support change columns."""
-        clause = super(MySQLMigrator, self).alter_change_column(table, column_name, field)
-        field_clause = clause.nodes[-1]
-        field_clause.nodes.insert(1, SQL('TYPE'))
-        return clause
+    def alter_change_column(self, table, column, field):
+        """Support change columns for mysql Distrib 5.6.33."""
+        field_null, field.null = field.null, True
+        field_clause = self.database.compiler().field_definition(field)
+        field.null = field_null
+        return Clause(SQL('ALTER TABLE'),
+                      Entity(table),
+                      SQL('MODIFY COLUMN'),
+                      field_clause)
 
 
 class PostgresqlMigrator(SchemaMigrator, PgM):
@@ -195,12 +196,26 @@ class Migrator(object):
     def change_columns(self, model, **fields):
         """Change fields."""
         for name, field in fields.items():
+            model._meta.validate_backrefs = False
             field.add_to_class(model, name)
-            self.ops.append(self.migrator.change_column(
-                model._meta.db_table, field.db_column, field))
-            if field.unique:
-                self.ops.append(self.migrator.add_index(
-                    model._meta.db_table, (field.db_column,), unique=True))
+            model._meta.validate_backrefs = True
+            obj_name = str(name) + '_id'
+            if isinstance(field, pw.ForeignKeyField):
+                on_delete = field.on_delete if field.on_delete else 'RESTRICT'
+                on_update = field.on_update if field.on_update else 'RESTRICT'
+                self.ops.append(self.migrator.drop_foreign_key_constraint(
+                    model._meta.db_table, field.db_column))
+                self.ops.append(self.migrator.add_foreign_key_constraint(
+                    model._meta.db_table, field.db_column,
+                    field.rel_model._meta.db_table, field.to_field.name,
+                    on_delete, on_update))
+            else:
+                if obj_name in model.__dict__:
+                    self.ops.append(
+                        self.migrator.drop_foreign_key_constraint(
+                            model._meta.db_table, field.db_column))
+                self.ops.append(self.migrator.change_column(
+                    model._meta.db_table, field.db_column, field))
         return model
 
     change_fields = change_columns
@@ -267,6 +282,8 @@ class Migrator(object):
         columns_ = []
         for col in columns:
             field = model._meta.fields.get(col)
+            field.unique = unique
+            field.index = True
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)
@@ -279,6 +296,8 @@ class Migrator(object):
         columns_ = []
         for col in columns:
             field = model._meta.fields.get(col)
+            field.unique = False
+            field.index = False
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)

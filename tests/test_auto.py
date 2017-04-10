@@ -14,19 +14,22 @@ def test_auto():
 
     code = model_to_code(Person_)
     assert code
-    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+    # import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+    assert "default=dt.datetime.now" in code
     assert 'db_table = "person"' in code
+    assert "order_by = ('-dob',)" in code
 
     changes = diff_many(models, [], migrator=migrator)
     assert len(changes) == 2
 
     class Person(pw.Model):
         first_name = pw.IntegerField()
-        last_name = pw.CharField(max_length=1024, null=True)
+        last_name = pw.CharField(max_length=1024, null=True, unique=True)
         tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', related_name='persons')
 
     changes = diff_one(Person, Person_, migrator=migrator)
-    assert len(changes) == 4
+    assert len(changes) == 5
     assert "on_delete='CASCADE'" in changes[0]
     assert "related_name='persons'" in changes[0]
-    assert changes[-1] == "migrator.drop_not_null('person', 'last_name')"
+    assert changes[-2] == "migrator.drop_not_null('person', 'last_name')"
+    assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
