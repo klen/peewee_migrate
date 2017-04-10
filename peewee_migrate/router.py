@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from importlib import import_module
 from types import ModuleType
 
@@ -14,7 +15,8 @@ from peewee_migrate.migrator import Migrator
 
 
 CLEAN_RE = re.compile(r'\s+$', re.M)
-DEFAULT_MIGRATE_DIR = os.path.join(os.getcwd(), 'migrations')
+CURDIR = os.getcwd()
+DEFAULT_MIGRATE_DIR = os.path.join(CURDIR, 'migrations')
 VOID = lambda m, d: None # noqa
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt')) as t:
     MIGRATE_TEMPLATE = t.read()
@@ -248,6 +250,8 @@ class ModuleRouter(BaseRouter):
 def load_models(module):
     """Load models from given module."""
     if isinstance(module, string_types):
+        if CURDIR not in sys.path:
+            sys.path.insert(0, CURDIR)
         module = import_module(module)
 
     if isinstance(module, ModuleType):
