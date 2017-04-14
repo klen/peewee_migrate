@@ -282,8 +282,11 @@ class Migrator(object):
         columns_ = []
         for col in columns:
             field = model._meta.fields.get(col)
-            field.unique = unique
-            field.index = True
+
+            if len(columns) == 1:
+                field.unique = unique
+                field.index = True
+
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)
@@ -296,8 +299,11 @@ class Migrator(object):
         columns_ = []
         for col in columns:
             field = model._meta.fields.get(col)
-            field.unique = False
-            field.index = False
+
+            if len(columns) == 1:
+                field.unique = False
+                field.index = False
+
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)

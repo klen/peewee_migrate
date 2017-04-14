@@ -64,9 +64,14 @@ def test_migrator():
     migrator.add_index(Order, 'identifier', 'customer')
     migrator.run()
     assert Order._meta.indexes
+    assert not Order.identifier.index
 
     migrator.drop_index(Order, 'identifier', 'customer')
     assert not Order._meta.indexes
 
     migrator.remove_fields(Order, 'customer')
     assert not hasattr(Order, 'customer')
+
+    migrator.add_index(Order, 'identifier', unique=True)
+    migrator.run()
+    assert Order.identifier.index
