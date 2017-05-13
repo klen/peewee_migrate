@@ -196,6 +196,7 @@ class Migrator(object):
     def change_columns(self, model, **fields):
         """Change fields."""
         for name, field in fields.items():
+            old_field = model._meta.fields.get(name, field)
             model._meta.validate_backrefs = False
             field.add_to_class(model, name)
             model._meta.validate_backrefs = True
@@ -209,13 +210,28 @@ class Migrator(object):
                     model._meta.db_table, field.db_column,
                     field.rel_model._meta.db_table, field.to_field.name,
                     on_delete, on_update))
+                continue
+
+            if obj_name in model.__dict__:
+                self.ops.append(
+                    self.migrator.drop_foreign_key_constraint(
+                        model._meta.db_table, field.db_column))
+
+            self.ops.append(self.migrator.change_column(
+                model._meta.db_table, field.db_column, field))
+
+            if field.unique == old_field.unique:
+                continue
+
+            if field.unique:
+                index = (field.db_column,), field.unique
+                self.ops.append(self.migrator.add_index(model._meta.db_table, *index))
+                model._meta.indexes.append(index)
             else:
-                if obj_name in model.__dict__:
-                    self.ops.append(
-                        self.migrator.drop_foreign_key_constraint(
-                            model._meta.db_table, field.db_column))
-                self.ops.append(self.migrator.change_column(
-                    model._meta.db_table, field.db_column, field))
+                index = (field.db_column,), old_field.unique
+                self.ops.append(self.migrator.drop_index(model._meta.db_table, *index))
+                model._meta.indexes.remove(index)
+
         return model
 
     change_fields = change_columns

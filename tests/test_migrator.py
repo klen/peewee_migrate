@@ -75,3 +75,8 @@ def test_migrator():
     migrator.add_index(Order, 'identifier', unique=True)
     migrator.run()
     assert Order.identifier.index
+    assert Order.identifier.unique
+    assert Order._meta.indexes
+
+    migrator.change_columns(Order, identifier=pw.IntegerField(default=0))
+    assert not Order._meta.indexes
