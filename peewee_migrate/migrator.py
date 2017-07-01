@@ -196,24 +196,26 @@ class Migrator(object):
     def change_columns(self, model, **fields):
         """Change fields."""
         for name, field in fields.items():
+            old_filed = model._meta.fields[name]
+            old_db_column = old_filed.db_column
             model._meta.validate_backrefs = False
             field.add_to_class(model, name)
             model._meta.validate_backrefs = True
-            obj_name = str(name) + '_id'
+            if isinstance(old_filed, pw.ForeignKeyField):
+                self.ops.append(self.migrator.drop_foreign_key_constraint(
+                    model._meta.db_table, old_db_column))
+            if old_db_column != field.db_column:
+                self.ops.append(
+                    self.migrator.rename_column(
+                        model._meta.db_table, old_db_column, field.db_column))
             if isinstance(field, pw.ForeignKeyField):
                 on_delete = field.on_delete if field.on_delete else 'RESTRICT'
                 on_update = field.on_update if field.on_update else 'RESTRICT'
-                self.ops.append(self.migrator.drop_foreign_key_constraint(
-                    model._meta.db_table, field.db_column))
                 self.ops.append(self.migrator.add_foreign_key_constraint(
                     model._meta.db_table, field.db_column,
                     field.rel_model._meta.db_table, field.to_field.name,
                     on_delete, on_update))
             else:
-                if obj_name in model.__dict__:
-                    self.ops.append(
-                        self.migrator.drop_foreign_key_constraint(
-                            model._meta.db_table, field.db_column))
                 self.ops.append(self.migrator.change_column(
                     model._meta.db_table, field.db_column, field))
         return model
@@ -285,8 +287,7 @@ class Migrator(object):
 
             if len(columns) == 1:
                 field.unique = unique
-                field.index = True
-
+                field.index = True if not unique else False
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)

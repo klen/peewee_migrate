@@ -74,4 +74,4 @@ def test_migrator():
 
     migrator.add_index(Order, 'identifier', unique=True)
     migrator.run()
-    assert Order.identifier.index
+    assert not Order.identifier.index

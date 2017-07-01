@@ -5,7 +5,7 @@ def test_auto():
     from peewee_migrate.auto import diff_one, diff_many, model_to_code
     from peewee_migrate.cli import get_router
 
-    router = get_router('tests/migrations', 'sqlite:///:memory:')
+    router = get_router('/home/eric/peewee_migrate/tests/migrations', 'sqlite:///:memory:')
     router.run()
     migrator = router.migrator
     models = migrator.orm.values()
@@ -28,8 +28,10 @@ def test_auto():
         tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', related_name='persons')
 
     changes = diff_one(Person, Person_, migrator=migrator)
-    assert len(changes) == 5
+    assert len(changes) == 6
     assert "on_delete='CASCADE'" in changes[0]
     assert "related_name='persons'" in changes[0]
-    assert changes[-2] == "migrator.drop_not_null('person', 'last_name')"
+    assert changes[-3] == "migrator.drop_not_null('person', 'last_name')"
+    assert changes[-2] == "migrator.drop_index('person', 'last_name')"
     assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
+

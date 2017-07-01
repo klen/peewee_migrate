@@ -33,7 +33,7 @@ def migrate(migrator, database, **kwargs):
     @migrator.create_model
     class Person(pw.Model):
         first_name = pw.CharField()
-        last_name = pw.CharField()
+        last_name = pw.CharField(index=True)
         dob = pw.DateField(null=True)
         birthday = pw.DateField(default=dt.datetime.now)
 
