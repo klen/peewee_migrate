@@ -127,7 +127,9 @@ def diff_one(model1, model2, **kwargs):
         changes.append(change_not_null(model1, name, null))
 
     for name, index, unique in indexes_:
-        if index is True or (index is False and unique is True):
+        if index is True or unique is True:
+            if fields2[name].unique or fields2[name].index:
+                changes.append(drop_index(model1, name))
             changes.append(add_index(model1, name, unique))
         else:
             changes.append(drop_index(model1, name))
