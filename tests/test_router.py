@@ -29,6 +29,11 @@ def test_router():
     router.run()
     assert router.diff == []
 
+    with mock.patch('peewee.Database.execute_sql') as execute_sql:
+        router.run_one('002_test', router.migrator, fake=True)
+
+    assert not execute_sql.called
+
     migrations = MigrateHistory.select()
     assert list(migrations)
     assert migrations.count() == 3

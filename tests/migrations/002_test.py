@@ -28,3 +28,5 @@ def migrate(migrator, database, **kwargs):
     """
     migrator.add_fields(
         'tag', created_at=pw.DateTimeField(null=True))
+
+    migrator.add_index('person', 'first_name', unique=True)
