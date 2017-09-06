@@ -1,5 +1,5 @@
 -e .
 -r requirements.txt
 
-ipdb==0.10.2
-pytest==3.0.7
+ipdb==0.10.3
+pytest==3.2.1
