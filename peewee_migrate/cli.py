@@ -21,12 +21,13 @@ def get_router(directory, database, verbose=0):
     logging_level = VERBOSE[verbose]
     config = {}
     migrate_table = 'migratehistory'
-    ignore = None
+    ignore = schema = None
     try:
         with open(os.path.join(directory, 'conf.py')) as cfg:
             exec_in(cfg.read(), config, config)
             database = config.get('DATABASE', database)
             ignore = config.get('IGNORE', ignore)
+            schema = config.get('SCHEMA', schema)
             migrate_table = config.get('MIGRATE_TABLE', migrate_table)
             logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
     except IOError:
@@ -38,7 +39,8 @@ def get_router(directory, database, verbose=0):
     LOGGER.setLevel(logging_level)
 
     try:
-        return Router(database, migrate_table=migrate_table, migrate_dir=directory, ignore=ignore)
+        return Router(database, migrate_table=migrate_table, migrate_dir=directory,
+                      ignore=ignore, schema=schema)
     except RuntimeError as exc:
         LOGGER.error(exc)
         return sys.exit(1)

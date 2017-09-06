@@ -26,9 +26,11 @@ class BaseRouter(object):
 
     """Abstract base class for router."""
 
-    def __init__(self, database, migrate_table='migratehistory', ignore=None, logger=LOGGER):
+    def __init__(self, database, migrate_table='migratehistory', ignore=None,
+                 schema=None, logger=LOGGER):
         self.database = database
         self.migrate_table = migrate_table
+        self.schema = schema
         self.ignore = ignore
         self.logger = logger
         if not isinstance(self.database, (pw.Database, pw.Proxy)):
@@ -39,6 +41,7 @@ class BaseRouter(object):
         """Initialize and cache MigrationHistory model."""
         MigrateHistory._meta.database = self.database
         MigrateHistory._meta.db_table = self.migrate_table
+        MigrateHistory._meta.schema = self.schema
         MigrateHistory.create_table(True)
         return MigrateHistory
 
