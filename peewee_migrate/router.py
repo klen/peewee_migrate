@@ -52,7 +52,7 @@ class BaseRouter(object):
     @property
     def done(self):
         """Scan migrations in database."""
-        return [mm.name for mm in self.model.select()]
+        return [mm.name for mm in self.model.select().order_by(self.model.id)]
 
     @property
     def diff(self):
