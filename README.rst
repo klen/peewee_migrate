@@ -33,6 +33,7 @@ Requirements
 =============
 
 - python 2.7,3.3,3.4
+- peewee >= 2.10.1
 
 .. _installation:
 
