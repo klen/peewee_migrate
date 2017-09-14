@@ -76,11 +76,32 @@ class Column(VanilaColumn):
 
     def get_field(self, space=' '):
         # Generate the field definition for this column.
+        postgres_ext_fields = [
+            'ArrayField',
+            'HStoreField',
+            'IntervalField',
+            'JSONField',
+            'BinaryJSONField',
+            'TSVectorField',
+            'DateTimeTZField'
+        ]
+
         field_params = self.get_field_parameters()
         param_str = ', '.join('%s=%s' % (k, v)
                               for k, v in sorted(field_params.items()))
-        return '{name}{space}={space}pw.{classname}({params})'.format(
-            name=self.name, space=space, classname=self.field_class.__name__, params=param_str)
+
+        if self.field_class.__name__ in postgres_ext_fields:
+            module = 'pw_pext'
+        else:
+            module = 'pw'
+
+        return '{name}{space}={space}{module}.{classname}({params})'.format(
+            name=self.name,
+            space=space,
+            module=module,
+            classname=self.field_class.__name__,
+            params=param_str
+        )
 
 
 def diff_one(model1, model2, **kwargs):
