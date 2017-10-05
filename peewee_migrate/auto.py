@@ -1,11 +1,21 @@
-from collections import Hashable, OrderedDict
+import datetime
 
 import peewee as pw
+from collections import Hashable, OrderedDict
 from playhouse.reflection import Column as VanilaColumn
-import datetime
+
 
 INDENT = '    '
 NEWLINE = '\n' + INDENT
+FIELD_MODULES_MAP = {
+    'ArrayField': 'pw_pext',
+    'BinaryJSONField': 'pw_pext',
+    'DateTimeTZField': 'pw_pext',
+    'HStoreField': 'pw_pext',
+    'IntervalField': 'pw_pext',
+    'JSONField': 'pw_pext',
+    'TSVectorField': 'pw_pext',
+}
 
 
 def fk_to_params(field):
@@ -76,24 +86,12 @@ class Column(VanilaColumn):
 
     def get_field(self, space=' '):
         # Generate the field definition for this column.
-        postgres_ext_fields = [
-            'ArrayField',
-            'HStoreField',
-            'IntervalField',
-            'JSONField',
-            'BinaryJSONField',
-            'TSVectorField',
-            'DateTimeTZField'
-        ]
 
         field_params = self.get_field_parameters()
         param_str = ', '.join('%s=%s' % (k, v)
                               for k, v in sorted(field_params.items()))
 
-        if self.field_class.__name__ in postgres_ext_fields:
-            module = 'pw_pext'
-        else:
-            module = 'pw'
+        module = FIELD_MODULES_MAP.get(self.field_class.__name__, 'pw')
 
         return '{name}{space}={space}{module}.{classname}({params})'.format(
             name=self.name,
