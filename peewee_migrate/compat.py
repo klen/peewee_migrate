@@ -188,4 +188,35 @@ except ImportError:
         __import__(name)
         return sys.modules[name]
 
+# Peewee 2 -> 3 compatibility functions
+try:
+    from peewee import Clause
+    IS_PEEWEE_2 = True
+except ImportError:
+    IS_PEEWEE_2 = False
+    # @TODO This is not how the clause works at all
+    def Clause(*parts):
+        return ' '.join([part.sql for part in parts])
+
+
+def get_table_name(model):
+    try:
+        return model._meta.table_name
+    except AttributeError:
+        return model._meta.db_table
+
+
+def get_field_name(field):
+    try:
+        return field.column_name
+    except AttributeError:
+        return field.db_column
+
+
+def add_field_to_class(field, model, name):
+    try:
+        field.add_to_class(model, name)
+    except AttributeError:
+        field.bind(model, name)
+
 # pylama:ignore=W,E731,C901
