@@ -4,10 +4,13 @@ from playhouse.migrate import (
     PostgresqlMigrator as PgM,
     SchemaMigrator as ScM,
     SqliteMigrator as SqM,
-    Operation, SQL, Entity, Clause, PostgresqlDatabase, operation, SqliteDatabase, MySQLDatabase
+    Operation, SQL, Entity, PostgresqlDatabase, operation, SqliteDatabase, MySQLDatabase
 )
 
 from peewee_migrate import LOGGER
+from peewee_migrate.compat import (
+    add_field_to_class, Clause, get_table_name, get_field_name, IS_PEEWEE_2
+)
 
 
 class SchemaMigrator(ScM):
@@ -39,6 +42,8 @@ class SchemaMigrator(ScM):
     def alter_change_column(self, table, column, field):
         """Support change columns."""
         field_null, field.null = field.null, True
+        # @TODO: (peewee-3-compat) This is broken in Peewee 3 because of the
+        # rewritten query compiler.
         field_clause = self.database.compiler().field_definition(field)
         field.null = field_null
         return Clause(SQL('ALTER TABLE'), Entity(table), SQL('ALTER COLUMN'), field_clause)
@@ -53,8 +58,11 @@ class SchemaMigrator(ScM):
         """Keep fieldname unchanged."""
         # Make field null at first.
         field_null, field.null = field.null, True
-        field.db_column = column_name
+        field.db_column = field.column_name = column_name
+        # @TODO: (peewee-3-compat) This is broken in Peewee 3 because of the
+        # rewritten query compiler.
         field_clause = self.database.compiler().field_definition(field)
+        field.column_name = column_name
         field.null = field_null
         parts = [
             SQL('ALTER TABLE'),
@@ -73,6 +81,8 @@ class MySQLMigrator(SchemaMigrator, MqM):
     def alter_change_column(self, table, column, field):
         """Support change columns for mysql Distrib 5.6.33."""
         field_null, field.null = field.null, True
+        # @TODO: (peewee-3-compat) This is broken in Peewee 3 because of the
+        # rewritten query compiler.
         field_clause = self.database.compiler().field_definition(field)
         field.null = field_null
         return Clause(SQL('ALTER TABLE'),
@@ -104,6 +114,8 @@ class SqliteMigrator(SchemaMigrator, SqM):
     def alter_change_column(self, table, column, field):
         """Support change columns."""
         def _change(column_name, column_def):
+            # @TODO: (peewee-3-compat) This is broken in Peewee 3 because of
+            # the rewritten query compiler.
             compiler = self.database.compiler()
             clause = compiler.field_definition(field)
             sql, _ = compiler.parse_node(clause)
@@ -161,7 +173,7 @@ class Migrator(object):
 
         >> migrator.create_table(model)
         """
-        self.orm[model._meta.db_table] = model
+        self.orm[get_table_name(model)] = model
         model._meta.database = self.database
         self.ops.append(model.create_table)
         return model
@@ -174,7 +186,7 @@ class Migrator(object):
 
         >> migrator.drop_table(model, cascade=True)
         """
-        del self.orm[model._meta.db_table]
+        del self.orm[get_table_name(model)]
         self.ops.append(self.migrator.drop_table(model, cascade))
 
     remove_model = drop_table
@@ -183,11 +195,12 @@ class Migrator(object):
     def add_columns(self, model, **fields):
         """Create new fields."""
         for name, field in fields.items():
-            field.add_to_class(model, name)
-            self.ops.append(self.migrator.add_column(model._meta.db_table, field.db_column, field))
+            add_field_to_class(field, model, name)
+            self.ops.append(self.migrator.add_column(
+                get_table_name(model), get_field_name(field), field))
             if field.unique:
                 self.ops.append(self.migrator.add_index(
-                    model._meta.db_table, (field.db_column,), unique=True))
+                    get_table_name(model), (get_field_name(field),), unique=True))
         return model
 
     add_fields = add_columns
@@ -197,43 +210,43 @@ class Migrator(object):
         """Change fields."""
         for name, field in fields.items():
             old_field = model._meta.fields.get(name, field)
-            old_db_column = old_field and old_field.db_column
+            old_db_column = old_field and get_field_name(old_field)
 
             model._meta.validate_backrefs = False
-            field.add_to_class(model, name)
+            add_field_to_class(field, model, name)
             model._meta.validate_backrefs = True
 
             if isinstance(old_field, pw.ForeignKeyField):
                 self.ops.append(self.migrator.drop_foreign_key_constraint(
-                    model._meta.db_table, old_db_column))
+                    get_table_name(model), old_db_column))
 
-            if old_db_column != field.db_column:
+            if old_db_column != get_field_name(field):
                 self.ops.append(
                     self.migrator.rename_column(
-                        model._meta.db_table, old_db_column, field.db_column))
+                        get_table_name(model), old_db_column, field.db_column))
 
             if isinstance(field, pw.ForeignKeyField):
                 on_delete = field.on_delete if field.on_delete else 'RESTRICT'
                 on_update = field.on_update if field.on_update else 'RESTRICT'
                 self.ops.append(self.migrator.add_foreign_key_constraint(
-                    model._meta.db_table, field.db_column,
-                    field.rel_model._meta.db_table, field.to_field.name,
+                    get_table_name(model), get_field_name(field),
+                    get_table_name(field.rel_model), field.to_field.name,
                     on_delete, on_update))
                 continue
 
             self.ops.append(self.migrator.change_column(
-                model._meta.db_table, field.db_column, field))
+                get_table_name(model), get_field_name(field), field))
 
             if field.unique == old_field.unique:
                 continue
 
             if field.unique:
-                index = (field.db_column,), field.unique
-                self.ops.append(self.migrator.add_index(model._meta.db_table, *index))
+                index = (get_field_name(field),), field.unique
+                self.ops.append(self.migrator.add_index(get_table_name(model), *index))
                 model._meta.indexes.append(index)
             else:
-                index = (field.db_column,), old_field.unique
-                self.ops.append(self.migrator.drop_index(model._meta.db_table, *index))
+                index = (get_field_name(field),), old_field.unique
+                self.ops.append(self.migrator.drop_index(get_table_name(model), *index))
                 model._meta.indexes.remove(index)
 
         return model
@@ -248,11 +261,13 @@ class Migrator(object):
         for field in fields:
             self.__del_field__(model, field)
             if field.unique:
+                # @TODO: (peewee-3-compat) This is broken in Peewee 3 because
+                # of the rewritten query compiler.
                 compiler = self.database.compiler()
-                index_name = compiler.index_name(model._meta.db_table, (field.db_column,))
-                self.ops.append(self.migrator.drop_index(model._meta.db_table, index_name))
+                index_name = compiler.index_name(get_table_name(model), (get_field_name(field),))
+                self.ops.append(self.migrator.drop_index(get_table_name(model), index_name))
             self.ops.append(
-                self.migrator.drop_column(model._meta.db_table, field.db_column, cascade=cascade))
+                self.migrator.drop_column(get_table_name(model), get_field_name(field), cascade=cascade))
         return model
 
     remove_fields = drop_columns
@@ -262,8 +277,8 @@ class Migrator(object):
         model._meta.remove_field(field.name)
         delattr(model, field.name)
         if isinstance(field, pw.ForeignKeyField):
-            obj_id_name = field.db_column
-            if field.db_column == field.name:
+            obj_id_name = get_field_name(field)
+            if get_field_name(field) == field.name:
                 obj_id_name += '_id'
             delattr(model, obj_id_name)
             delattr(field.rel_model, field.related_name)
@@ -274,13 +289,13 @@ class Migrator(object):
         """Rename field in model."""
         field = model._meta.fields[old_name]
         if isinstance(field, pw.ForeignKeyField):
-            old_name = field.db_column
+            old_name = get_field_name(field)
         self.__del_field__(model, field)
-        field.name = field.db_column = new_name
-        field.add_to_class(model, new_name)
+        field.name = field.column_name = field.db_column = new_name
+        add_field_to_class(field, model, new_name)
         if isinstance(field, pw.ForeignKeyField):
-            field.db_column = new_name = field.db_column + '_id'
-        self.ops.append(self.migrator.rename_column(model._meta.db_table, old_name, new_name))
+            field.db_column = field.column_name = new_name = get_field_name(field) + '_id'
+        self.ops.append(self.migrator.rename_column(get_table_name(model), old_name, new_name))
         return model
 
     rename_field = rename_column
@@ -288,10 +303,11 @@ class Migrator(object):
     @get_model
     def rename_table(self, model, new_name):
         """Rename table in database."""
-        del self.orm[model._meta.db_table]
+        del self.orm[get_table_name(model)]
+        model._meta.table_name = new_name
         model._meta.db_table = new_name
-        self.orm[model._meta.db_table] = model
-        self.ops.append(self.migrator.rename_table(model._meta.db_table, new_name))
+        self.orm[get_table_name(model)] = model
+        self.ops.append(self.migrator.rename_table(get_table_name(model), new_name))
         return model
 
     @get_model
@@ -311,7 +327,7 @@ class Migrator(object):
                 col = col + '_id'
 
             columns_.append(col)
-        self.ops.append(self.migrator.add_index(model._meta.db_table, columns_, unique=unique))
+        self.ops.append(self.migrator.add_index(get_table_name(model), columns_, unique=unique))
         return model
 
     @get_model
@@ -328,9 +344,9 @@ class Migrator(object):
             if isinstance(field, pw.ForeignKeyField):
                 col = col + '_id'
             columns_.append(col)
-        index_name = self.migrator.database.compiler().index_name(model._meta.db_table, columns_)
+        index_name = self.migrator.database.compiler().index_name(get_table_name(model), columns_)
         model._meta.indexes = [(cols, _) for (cols, _) in model._meta.indexes if columns != cols]
-        self.ops.append(self.migrator.drop_index(model._meta.db_table, index_name))
+        self.ops.append(self.migrator.drop_index(get_table_name(model), index_name))
         return model
 
     @get_model
@@ -339,7 +355,7 @@ class Migrator(object):
         for name in names:
             field = model._meta.fields[name]
             field.null = False
-            self.ops.append(self.migrator.add_not_null(model._meta.db_table, field.db_column))
+            self.ops.append(self.migrator.add_not_null(get_table_name(model), get_field_name(field)))
         return model
 
     @get_model
@@ -348,7 +364,7 @@ class Migrator(object):
         for name in names:
             field = model._meta.fields[name]
             field.null = True
-            self.ops.append(self.migrator.drop_not_null(model._meta.db_table, field.db_column))
+            self.ops.append(self.migrator.drop_not_null(get_table_name(model), get_field_name(field)))
         return model
 
     @get_model
@@ -356,7 +372,7 @@ class Migrator(object):
         """Add default."""
         field = model._meta.fields[name]
         model._meta.defaults[field] = field.default = default
-        self.ops.append(self.migrator.apply_default(model._meta.db_table, name, field))
+        self.ops.append(self.migrator.apply_default(get_table_name(model), name, field))
         return model
 
 #  pylama:ignore=W0223,W0212,R

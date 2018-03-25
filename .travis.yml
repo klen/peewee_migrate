@@ -3,8 +3,10 @@ language: python
 python: 2.7
 
 env:
-- TOXENV=py27
-- TOXENV=py34
+- TOXENV=py27-peewee2
+- TOXENV=py27-peewee3
+- TOXENV=py34-peewee2
+- TOXENV=py34-peewee3
 - TOXENV=cov
 
 branches:
