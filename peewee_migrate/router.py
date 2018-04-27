@@ -153,9 +153,8 @@ class BaseRouter(object):
 
         except Exception as exc:
             self.database.rollback()
-            self.logger.exception(exc)
             operation = 'Migration' if not downgrade else 'Rollback'
-            self.logger.error('%s failed: %s', operation, name)
+            self.logger.exception('%s failed: %s', operation, name)
             raise
 
     def run(self, name=None, fake=False):
