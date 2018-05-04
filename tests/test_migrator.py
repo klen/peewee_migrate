@@ -52,7 +52,7 @@ def test_migrator():
     migrator.run()
 
     migrator.change_columns(Order, identifier=pw.IntegerField(default=0))
-    assert Order.identifier.db_field == 'int'
+    assert Order.identifier.field_type == 'INT'
     migrator.run()
 
     Order.create(identifier=55)
@@ -67,9 +67,11 @@ def test_migrator():
     assert not Order.identifier.index
 
     migrator.drop_index(Order, 'identifier', 'customer')
+    migrator.run()
     assert not Order._meta.indexes
 
     migrator.remove_fields(Order, 'customer')
+    migrator.run()
     assert not hasattr(Order, 'customer')
 
     migrator.add_index(Order, 'identifier', unique=True)

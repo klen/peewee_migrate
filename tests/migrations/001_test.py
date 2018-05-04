@@ -36,6 +36,3 @@ def migrate(migrator, database, **kwargs):
         last_name = pw.CharField(index=True)
         dob = pw.DateField(null=True)
         birthday = pw.DateField(default=dt.datetime.now)
-
-        class Meta:
-            order_by = ('-dob',)

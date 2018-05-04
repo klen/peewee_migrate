@@ -40,7 +40,7 @@ class BaseRouter(object):
     def model(self):
         """Initialize and cache MigrationHistory model."""
         MigrateHistory._meta.database = self.database
-        MigrateHistory._meta.db_table = self.migrate_table
+        MigrateHistory._meta.table_name = self.migrate_table
         MigrateHistory._meta.schema = self.schema
         MigrateHistory.create_table(True)
         return MigrateHistory

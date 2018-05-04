@@ -32,8 +32,13 @@ Peewee Migrate -- A simple migration engine for Peewee
 Requirements
 =============
 
-- python 2.7,3.3,3.4
-- peewee >= 2.10.1
+- python 2.7,3.5
+- peewee >= 3.3.1
+
+Dependency Note
+---------------
+
+For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``.
 
 .. _installation:
 

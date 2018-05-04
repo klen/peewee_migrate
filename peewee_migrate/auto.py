@@ -1,5 +1,3 @@
-import datetime
-
 import peewee as pw
 from collections import Hashable, OrderedDict
 from playhouse.reflection import Column as VanilaColumn
@@ -21,12 +19,9 @@ FIELD_MODULES_MAP = {
 def fk_to_params(field):
     params = {}
     if field.on_delete is not None:
-        params['on_delete'] = field.on_delete
+        params['on_delete'] = "'%s'" % field.on_delete
     if field.on_update is not None:
-        params['on_update'] = field.on_update
-    if field._related_name is not None:
-        params['related_name'] = field._related_name
-    params['rel_model'] = "migrator.orm['%s']" % field.rel_model._meta.db_table
+        params['on_update'] = "'%s'" % field.on_update
     return params
 
 
@@ -50,56 +45,33 @@ FIELD_TO_PARAMS = {
 class Column(VanilaColumn):
 
     def __init__(self, field, migrator=None):  # noqa
-        self.name = field.name
-        self.field_class = type(field)
-        self.nullable = field.null
-        self.primary_key = field.primary_key
-        self.db_column = field.db_column
-        self.index = field.index
-        self.unique = field.unique
-        self.params = {}
-        if field.default is not None:
-            if not callable(field.default):
-                self.params['default'] = field.default
-            elif field.default.__self__ is datetime.datetime:
-                self.params['default'] = 'dt.datetime.now'
-            else:
-                self.params['default'] = 'function_check'
+        super(Column, self).__init__(
+            field.name, type(field), field.field_type, field.null,
+            primary_key=field.primary_key, column_name=field.column_name, index=field.index,
+            unique=field.unique, extra_parameters={}
+        )
+        if field.default is not None and not callable(field.default):
+            self.default = field.default
 
         if self.field_class in FIELD_TO_PARAMS:
-            self.params.update(FIELD_TO_PARAMS[self.field_class](field))
+            self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
 
         self.rel_model = None
         self.related_name = None
         self.to_field = None
 
         if isinstance(field, pw.ForeignKeyField):
-            self.to_field = field.to_field.name
-
-    def get_field_parameters(self):
-        params = super(Column, self).get_field_parameters()
-        repr_ignore = ['dt.datetime.now', 'rel_model']
-        params.update(
-            {k: repr(v) if v not in repr_ignore and k not in repr_ignore else v
-             for k, v in self.params.items()})
-        return params
+            self.to_field = field.rel_field.name
+            self.related_name = field.backref
+            self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.table_name
 
     def get_field(self, space=' '):
         # Generate the field definition for this column.
-
-        field_params = self.get_field_parameters()
-        param_str = ', '.join('%s=%s' % (k, v)
-                              for k, v in sorted(field_params.items()))
-
+        field = super(Column, self).get_field()
         module = FIELD_MODULES_MAP.get(self.field_class.__name__, 'pw')
-
-        return '{name}{space}={space}{module}.{classname}({params})'.format(
-            name=self.name,
-            space=space,
-            module=module,
-            classname=self.field_class.__name__,
-            params=param_str
-        )
+        name, _, field = [s and s.strip() for s in field.partition('=')]
+        return '{name}{space}={space}{module}.{field}'.format(
+            name=name, field=field, space=space, module=module)
 
 
 def diff_one(model1, model2, **kwargs):
@@ -158,8 +130,8 @@ def diff_one(model1, model2, **kwargs):
 
 def diff_many(models1, models2, migrator=None, reverse=False):
     """Calculate changes for migrations from models2 to models1."""
-    models1 = pw.sort_models_topologically(models1)
-    models2 = pw.sort_models_topologically(models2)
+    models1 = pw.sort_models(models1)
+    models2 = pw.sort_models(models2)
 
     if reverse:
         models1 = reversed(models1)
@@ -198,17 +170,13 @@ def model_to_code(Model, **kwargs):
     ])
     meta = INDENT + NEWLINE.join([
         'class Meta:',
-        INDENT + 'db_table = "%s"' % Model._meta.db_table,
+        INDENT + 'table_name = "%s"' % Model._meta.table_name,
         (INDENT + 'schema = "%s"' % Model._meta.schema) if Model._meta.schema else '',
         (INDENT + 'primary_key = pw.CompositeKey{0}'.format(Model._meta.primary_key.field_names))
         if isinstance(Model._meta.primary_key, pw.CompositeKey) else '',
-        (INDENT + 'order_by = {0}'.format(get_order_by(Model))) if Model._meta.order_by else '',
     ])
 
-    return template.format(
-        classname=Model.__name__,
-        fields=fields, meta=meta
-    )
+    return template.format(classname=Model.__name__, fields=fields, meta=meta)
 
 
 def create_model(Model, **kwargs):
@@ -216,20 +184,20 @@ def create_model(Model, **kwargs):
 
 
 def remove_model(Model, **kwargs):
-    return "migrator.remove_model('%s')" % Model._meta.db_table
+    return "migrator.remove_model('%s')" % Model._meta.table_name
 
 
 def create_fields(Model, *fields, **kwargs):
     return "migrator.add_fields(%s'%s', %s)" % (
         NEWLINE,
-        Model._meta.db_table,
+        Model._meta.table_name,
         NEWLINE + (',' + NEWLINE).join([field_to_code(field, False, **kwargs) for field in fields])
     )
 
 
 def drop_fields(Model, *fields, **kwargs):
     return "migrator.remove_fields('%s', %s)" % (
-        Model._meta.db_table, ', '.join(map(repr, fields))
+        Model._meta.table_name, ', '.join(map(repr, fields))
     )
 
 
@@ -260,34 +228,27 @@ def field_to_params(field, **kwargs):
 
     params['index'] = field.index, field.unique
 
-    params.pop('related_name', None)  # Ignore related_name
+    params.pop('backref', None)  # Ignore backref
     return params
 
 
 def change_fields(Model, *fields, **kwargs):
     return "migrator.change_fields('%s', %s)" % (
-        Model._meta.db_table, (',' + NEWLINE).join([field_to_code(f, False) for f in fields])
+        Model._meta.table_name, (',' + NEWLINE).join([field_to_code(f, False) for f in fields])
     )
 
 
 def change_not_null(Model, name, null):
     operation = 'drop_not_null' if null else 'add_not_null'
-    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, repr(name))
-
-
-def get_order_by(Model):
-    return tuple(
-        ['-' + field.name
-         if field._ordering == 'DESC' else field.name
-         for field in Model._meta.order_by])
+    return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))
 
 
 def add_index(Model, name, unique):
     operation = 'add_index'
     return "migrator.%s('%s', %s, unique=%s)" %\
-        (operation, Model._meta.db_table, repr(name), unique)
+        (operation, Model._meta.table_name, repr(name), unique)
 
 
 def drop_index(Model, name):
     operation = 'drop_index'
-    return "migrator.%s('%s', %s)" % (operation, Model._meta.db_table, repr(name))
+    return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))

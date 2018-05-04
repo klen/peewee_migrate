@@ -21,9 +21,7 @@ def test_auto():
 
     code = model_to_code(Person_)
     assert code
-    assert "default=dt.datetime.now" in code
-    assert 'db_table = "person"' in code
-    assert "order_by = ('-dob',)" in code
+    assert 'table_name = "person"' in code
 
     changes = diff_many(models, [], migrator=migrator)
     assert len(changes) == 2
@@ -36,16 +34,14 @@ def test_auto():
     changes = diff_one(Person, Person_, migrator=migrator)
     assert len(changes) == 6
     assert "on_delete='CASCADE'" in changes[0]
-    assert "related_name='persons'" in changes[0]
+    assert "backref='persons'" in changes[0]
     assert changes[-3] == "migrator.drop_not_null('person', 'last_name')"
     assert changes[-2] == "migrator.drop_index('person', 'last_name')"
     assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
 
 
-
 def test_auto_postgresext():
-    from peewee_migrate.auto import diff_one, diff_many, model_to_code
-    from peewee_migrate.cli import get_router
+    from peewee_migrate.auto import model_to_code
 
     class Object(pw.Model):
         array_field = ArrayField()
