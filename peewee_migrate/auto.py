@@ -226,7 +226,8 @@ def field_to_params(field, **kwargs):
             isinstance(field.default, Hashable):
         params['default'] = field.default
 
-    params['index'] = field.index, field.unique
+    index = field.index and not field.unique # Correct case where index and unique are both True
+    params['index'] = index, field.unique
 
     params.pop('backref', None)  # Ignore backref
     return params
