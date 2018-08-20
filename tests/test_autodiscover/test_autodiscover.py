@@ -5,7 +5,8 @@ if os.name == 'nt':
     MODELS_ROOT_DIR = 'tests\\test_autodiscover'
     MIGRATIONS_DIR = 'tests\\test_autodiscover\\migrations'
 else:
-    MODELS_ROOT_DIR = 'tests/test_autodiscover/migrations'
+    MODELS_ROOT_DIR = 'tests/test_autodiscover'
+    MIGRATIONS_DIR = 'tests/test_autodiscover/migrations'
 
 
 class TestAutoDiscover:
