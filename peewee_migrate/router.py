@@ -301,7 +301,12 @@ def load_models_via_autodiscover(autodiscover_regex, root_directory):
         if isinstance(module, string_types):
             if CURDIR not in sys.path:
                 sys.path.insert(0, CURDIR)
-            module = import_module(module)
+            try:
+                print(module)
+                module = import_module(module)
+            except TypeError:
+                # skip relative module path error
+                pass
 
         if isinstance(module, ModuleType):
             models.extend(list(filter(
