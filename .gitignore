@@ -48,3 +48,6 @@ docs/_build
 .venv
 /env
 /.ropeproject
+
+# JetBrains
+.idea

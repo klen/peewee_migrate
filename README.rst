@@ -82,9 +82,14 @@ Create migration: ::
         Create migration.
 
     Options:
-        --auto TEXT       Create migrations automatically. Set path to your models module.
-        --database TEXT   Database connection
-        --directory TEXT  Directory where migrations are stored
+        --auto                  TEXT    Create migrations automatically. Set path to your models module.
+        --database              TEXT    Database connection
+        --directory             TEXT    Directory where migrations are stored
+        --autodiscover          FLAG    Enable autodiscover models, searches for models in autodiscover regex
+                                        matched modules
+        --autodiscover_regex    TEXT    Regex that specifies what modules to pick
+                                        while autodiscovering, default=.*models$
+        check
         -v, --verbose
         --help            Show this message and exit.
 

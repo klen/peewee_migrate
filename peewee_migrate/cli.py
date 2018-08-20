@@ -55,7 +55,7 @@ def cli():
 @click.option('--name', default=None, help="Select migration")
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
-@click.option('--fake', is_flag=True, default=False, help=("Run migration as fake."))
+@click.option('--fake', is_flag=True, default=False, help="Run migration as fake.")
 @click.option('-v', '--verbose', count=True)
 def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
     """Migrate database."""
@@ -69,13 +69,18 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
 @click.argument('name')
 @click.option('--auto', default=False, help=(
     "Create migrations automatically. Set path to your models module."))
+@click.option('--autodiscover', default=False, is_flag=True, help=(
+    "Create migrations automatically. Bypasses folders and picks modules that fit to passed regex(default: .*models$)"))
+@click.option('--autodiscover_regex', default='.*models$', help=(
+    "Autodiscover regex for model modules pick (regex applies to the module name, not file name)"))
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
-def create(name, database=None, auto=False, directory=None, verbose=None):
+def create(name, database=None, auto=False, directory=None, verbose=None, autodiscover=False,
+           autodiscover_regex='.*models$'):
     """Create a migration."""
     router = get_router(directory, database, verbose)
-    router.create(name, auto=auto)
+    router.create(name, auto=auto, autodiscover_regex=autodiscover_regex, autodiscover=autodiscover)
 
 
 @cli.command()

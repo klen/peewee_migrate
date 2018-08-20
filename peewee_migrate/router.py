@@ -68,12 +68,15 @@ class BaseRouter(object):
             self.run_one(name, migrator)
         return migrator
 
-    def create(self, name='auto', auto=False):
+    def create(self, name='auto', auto=False, autodiscover=False, autodiscover_regex='.*models$'):
         """Create a migration."""
         migrate = rollback = ''
-        if auto:
+        if auto or autodiscover:
             try:
-                models = load_models(auto)
+                if auto:
+                    models = load_models(auto)
+                else:
+                    models = load_models_via_autodiscover(autodiscover_regex=autodiscover_regex, root_directory=CURDIR)
             except ImportError:
                 return self.logger.error("Can't import models module: %s", auto)
 
@@ -88,7 +91,6 @@ class BaseRouter(object):
                 return self.logger.warn('No changes found.')
 
             rollback = compile_migrations(self.migrator, models, reverse=True)
-
         self.logger.info('Creating migration "%s"', name)
         name = self.compile(name, migrate, rollback)
         self.logger.info('Migration has been created as "%s"', name)
@@ -221,7 +223,11 @@ class Router(BaseRouter):
 
     def read(self, name):
         """Read migration from file."""
-        with open(os.path.join(self.migrate_dir, name + '.py')) as f:
+        call_params = dict()
+        if os.name == 'nt' and sys.version_info >= (3, 0):
+            # if system is windows - force utf-8 encoding
+            call_params['encoding'] = 'utf-8'
+        with open(os.path.join(self.migrate_dir, name + '.py'), **call_params) as f:
             code = f.read()
             scope = {}
             exec_in(code, scope)
@@ -259,11 +265,49 @@ def load_models(module):
 
     if isinstance(module, ModuleType):
         return list(filter(
-            lambda m: isinstance(m, type) and issubclass(m, pw.Model) and
-            hasattr(m, '_meta'),
+            lambda m: _check_model(m),
             (getattr(module, model) for model in dir(module))))
 
     return module
+
+
+def _get_modules_with_models(autodiscover_regex, root_directory):
+    found_modules = []
+    for path, subdirs, files in os.walk(root_directory):
+        for name in files:
+            rel_dir = os.path.relpath(path, CURDIR)
+            rel_file = os.path.join(rel_dir, name)
+            if os.name == 'nt':
+                rel_file_module_name = rel_file.replace('\\', '.')[:-3]
+            else:
+                rel_file_module_name = rel_file.replace('/', '.')[:-3]
+            if rel_file.endswith('.py') and re.findall(autodiscover_regex, rel_file_module_name):
+                found_modules.append(rel_file_module_name)
+    return found_modules
+
+
+def _check_model(obj, models=None):
+    """Checks object if it's a peewee model"""
+    m_unique = obj not in models if models else True
+    return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta') and m_unique
+
+
+def load_models_via_autodiscover(autodiscover_regex, root_directory):
+    """Load models that placed inside root dir and match regex"""
+    modules = _get_modules_with_models(autodiscover_regex, root_directory)
+    models = []
+    for py_module in modules:
+        module = py_module
+        if isinstance(module, string_types):
+            if CURDIR not in sys.path:
+                sys.path.insert(0, CURDIR)
+            module = import_module(module)
+
+        if isinstance(module, ModuleType):
+            models.extend(list(filter(
+                lambda m: _check_model(m, models),
+                (getattr(module, model) for model in dir(module)))))
+    return models
 
 
 def compile_migrations(migrator, models, reverse=False):
