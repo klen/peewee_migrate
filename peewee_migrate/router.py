@@ -302,7 +302,6 @@ def load_models_via_autodiscover(autodiscover_regex, root_directory):
             if CURDIR not in sys.path:
                 sys.path.insert(0, CURDIR)
             try:
-                print(module)
                 module = import_module(module)
             except TypeError:
                 # skip relative module path error
