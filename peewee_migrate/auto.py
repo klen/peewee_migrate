@@ -55,6 +55,8 @@ class Column(VanilaColumn):
                     isinstance(field.default, pw.text_type) and not
                     field.default.startswith("'")):
                 self.default = "'{0}'".format(field.default)
+            else:
+                self.default = "{0}".format(field.default)
 
         if self.field_class in FIELD_TO_PARAMS:
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
