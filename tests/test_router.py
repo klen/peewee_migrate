@@ -3,12 +3,14 @@ import peewee as pw
 import os
 import mock
 
+MIGRATIONS_DIR = os.path.join('tests', 'migrations')
+
 
 def test_router():
     from peewee_migrate import MigrateHistory
     from peewee_migrate.cli import get_router
 
-    router = get_router('tests/migrations', 'sqlite:///:memory:')
+    router = get_router(MIGRATIONS_DIR, 'sqlite:///:memory:')
 
     assert router.database
     assert isinstance(router.database, pw.Database)
@@ -19,7 +21,7 @@ def test_router():
 
     router.create('new')
     assert router.todo == ['001_test', '002_test', '003_tespy', '004_new']
-    os.remove('tests/migrations/004_new.py')
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new.py'))
 
     MigrateHistory.create(name='001_test')
     assert router.diff == ['002_test', '003_tespy']
@@ -45,9 +47,9 @@ def test_router():
     with mock.patch('os.remove') as mocked:
         router.merge()
         assert mocked.call_count == 3
-        assert mocked.call_args[0][0] == 'tests/migrations/003_tespy.py'
+        assert mocked.call_args[0][0] == os.path.join(MIGRATIONS_DIR, '003_tespy.py')
         assert MigrateHistory.select().count() == 1
 
-    os.remove('tests/migrations/001_initial.py')
+    os.remove(os.path.join(MIGRATIONS_DIR, '001_initial.py'))
 
 # pylama:ignore=W0621

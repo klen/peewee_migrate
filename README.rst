@@ -82,11 +82,12 @@ Create migration: ::
         Create migration.
 
     Options:
-        --auto TEXT       Create migrations automatically. Set path to your models module.
-        --database TEXT   Database connection
-        --directory TEXT  Directory where migrations are stored
+        --auto                  FLAG  Scan sources and create db migrations automatically. Supports autodiscovery.
+        --auto-source           TEXT  Set to python module path for changes autoscan (e.g. 'package.models'). Current directory will be recursively scanned by default.
+        --database              TEXT  Database connection
+        --directory             TEXT  Directory where migrations are stored
         -v, --verbose
-        --help            Show this message and exit.
+        --help                        Show this message and exit.
 
 Run migrations: ::
 

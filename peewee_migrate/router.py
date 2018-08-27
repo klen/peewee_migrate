@@ -2,8 +2,8 @@ import os
 import re
 import sys
 from importlib import import_module
-from types import ModuleType
 
+import pkgutil
 import mock
 import peewee as pw
 from cached_property import cached_property
@@ -69,11 +69,19 @@ class BaseRouter(object):
         return migrator
 
     def create(self, name='auto', auto=False):
-        """Create a migration."""
+        """Create a migration.
+        :param auto: Python module path to scan for models.
+        """
         migrate = rollback = ''
         if auto:
             try:
-                models = load_models(auto)
+                modules = [auto]
+                if isinstance(auto, bool):
+                    modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
+                    modules = ['example', 'tests']
+
+                models = [m for module in modules for m in load_models(module)]
+
             except ImportError:
                 return self.logger.error("Can't import models module: %s", auto)
 
@@ -221,7 +229,11 @@ class Router(BaseRouter):
 
     def read(self, name):
         """Read migration from file."""
-        with open(os.path.join(self.migrate_dir, name + '.py')) as f:
+        call_params = dict()
+        if os.name == 'nt' and sys.version_info >= (3, 0):
+            # if system is windows - force utf-8 encoding
+            call_params['encoding'] = 'utf-8'
+        with open(os.path.join(self.migrate_dir, name + '.py'), **call_params) as f:
             code = f.read()
             scope = {}
             exec_in(code, scope)
@@ -252,18 +264,33 @@ class ModuleRouter(BaseRouter):
 
 def load_models(module):
     """Load models from given module."""
-    if isinstance(module, string_types):
-        if CURDIR not in sys.path:
-            sys.path.insert(0, CURDIR)
-        module = import_module(module)
+    modules = _import_submodules(module)
+    return {m for module in modules for m in filter(
+        _check_model, (getattr(module, name) for name in dir(module))
+    )}
 
-    if isinstance(module, ModuleType):
-        return list(filter(
-            lambda m: isinstance(m, type) and issubclass(m, pw.Model) and
-            hasattr(m, '_meta'),
-            (getattr(module, model) for model in dir(module))))
 
-    return module
+def _import_submodules(package, passed=set()):
+    if isinstance(package, str):
+        package = import_module(package)
+
+    modules = []
+    if set(package.__path__) & passed:
+        return modules
+
+    passed |= set(package.__path__)
+
+    for loader, name, is_pkg in pkgutil.walk_packages(package.__path__, package.__name__ + '.'):
+        module = loader.find_module(name).load_module(name)
+        modules.append(module)
+        if is_pkg:
+            modules += _import_submodules(module)
+    return modules
+
+
+def _check_model(obj, models=None):
+    """Checks object if it's a peewee model and unique."""
+    return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta')
 
 
 def compile_migrations(migrator, models, reverse=False):

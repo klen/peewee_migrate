@@ -48,3 +48,8 @@ docs/_build
 .venv
 /env
 /.ropeproject
+
+# JetBrains
+.idea
+/.pytest_cache
+/example*
