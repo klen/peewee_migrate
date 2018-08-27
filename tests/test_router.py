@@ -3,16 +3,7 @@ import peewee as pw
 import os
 import mock
 
-if os.name == 'nt':
-    MIGRATIONS_DIR = 'tests\\migrations'
-    MIGRATION_004 = 'tests\\migrations\\004_new.py'
-    MIGRATION_003 = 'tests\\migrations\\003_tespy.py'
-    MIGRATION_001_INITIAL = 'tests\\migrations\\001_initial.py'
-else:
-    MIGRATIONS_DIR = 'tests/migrations'
-    MIGRATION_004 = 'tests/migrations/004_new.py'
-    MIGRATION_003 = 'tests/migrations/003_tespy.py'
-    MIGRATION_001_INITIAL = 'tests/migrations/001_initial.py'
+MIGRATIONS_DIR = os.path.join('tests', 'migrations')
 
 
 def test_router():
@@ -30,7 +21,7 @@ def test_router():
 
     router.create('new')
     assert router.todo == ['001_test', '002_test', '003_tespy', '004_new']
-    os.remove(MIGRATION_004)
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new.py'))
 
     MigrateHistory.create(name='001_test')
     assert router.diff == ['002_test', '003_tespy']
@@ -56,9 +47,9 @@ def test_router():
     with mock.patch('os.remove') as mocked:
         router.merge()
         assert mocked.call_count == 3
-        assert mocked.call_args[0][0] == MIGRATION_003
+        assert mocked.call_args[0][0] == os.path.join(MIGRATIONS_DIR, '003_tespy.py')
         assert MigrateHistory.select().count() == 1
 
-    os.remove(MIGRATION_001_INITIAL)
+    os.remove(os.path.join(MIGRATIONS_DIR, '001_initial.py'))
 
 # pylama:ignore=W0621

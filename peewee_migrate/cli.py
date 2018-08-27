@@ -67,20 +67,21 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
 
 @cli.command()
 @click.argument('name')
-@click.option('--auto', default=False, help=(
-    "Create migrations automatically. Set path to your models module."))
-@click.option('--autodiscover', default=False, is_flag=True, help=(
-    "Create migrations automatically. Bypasses folders and picks modules that fit to passed regex(default: .*models$)"))
-@click.option('--autodiscover_regex', default='.*models$', help=(
-    "Autodiscover regex for model modules pick (regex applies to the module name, not file name)"))
+@click.option('--auto', default=False, is_flag=True, help=(
+    "Scan sources and create db migrations automatically. "
+    "Supports autodiscovery."))
+@click.option('--auto-source', default=False, help=(
+    "Set to python module path for changes autoscan (e.g. 'package.models'). "
+    "Current directory will be recursively scanned by default."))
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
-def create(name, database=None, auto=False, directory=None, verbose=None, autodiscover=False,
-           autodiscover_regex='.*models$'):
+def create(name, database=None, auto=False, auto_source=False, directory=None, verbose=None):
     """Create a migration."""
     router = get_router(directory, database, verbose)
-    router.create(name, auto=auto, autodiscover_regex=autodiscover_regex, autodiscover=autodiscover)
+    if auto and auto_source:
+        auto = auto_source
+    router.create(name, auto=auto)
 
 
 @cli.command()

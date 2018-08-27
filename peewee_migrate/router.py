@@ -2,8 +2,8 @@ import os
 import re
 import sys
 from importlib import import_module
-from types import ModuleType
 
+import pkgutil
 import mock
 import peewee as pw
 from cached_property import cached_property
@@ -68,15 +68,20 @@ class BaseRouter(object):
             self.run_one(name, migrator)
         return migrator
 
-    def create(self, name='auto', auto=False, autodiscover=False, autodiscover_regex='.*models$'):
-        """Create a migration."""
+    def create(self, name='auto', auto=False):
+        """Create a migration.
+        :param auto: Python module path to scan for models.
+        """
         migrate = rollback = ''
-        if auto or autodiscover:
+        if auto:
             try:
-                if auto:
-                    models = load_models(auto)
-                else:
-                    models = load_models_via_autodiscover(autodiscover_regex=autodiscover_regex, root_directory=CURDIR)
+                modules = [auto]
+                if isinstance(auto, bool):
+                    modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
+                    modules = ['example', 'tests']
+
+                models = [m for module in modules for m in load_models(module)]
+
             except ImportError:
                 return self.logger.error("Can't import models module: %s", auto)
 
@@ -91,6 +96,7 @@ class BaseRouter(object):
                 return self.logger.warn('No changes found.')
 
             rollback = compile_migrations(self.migrator, models, reverse=True)
+
         self.logger.info('Creating migration "%s"', name)
         name = self.compile(name, migrate, rollback)
         self.logger.info('Migration has been created as "%s"', name)
@@ -258,60 +264,33 @@ class ModuleRouter(BaseRouter):
 
 def load_models(module):
     """Load models from given module."""
-    if isinstance(module, string_types):
-        if CURDIR not in sys.path:
-            sys.path.insert(0, CURDIR)
-        module = import_module(module)
-
-    if isinstance(module, ModuleType):
-        return list(filter(
-            lambda m: _check_model(m),
-            (getattr(module, model) for model in dir(module))))
-
-    return module
+    modules = _import_submodules(module)
+    return {m for module in modules for m in filter(
+        _check_model, (getattr(module, name) for name in dir(module))
+    )}
 
 
-def _get_modules_with_models(autodiscover_regex, root_directory):
-    found_modules = []
-    for path, subdirs, files in os.walk(root_directory):
-        for name in files:
-            rel_dir = os.path.relpath(path, CURDIR)
-            rel_file = os.path.join(rel_dir, name)
-            if os.name == 'nt':
-                rel_file_module_name = rel_file.replace('\\', '.')[:-3]
-            else:
-                rel_file_module_name = rel_file.replace('/', '.')[:-3]
-            if rel_file.endswith('.py') and re.findall(autodiscover_regex, rel_file_module_name):
-                found_modules.append(rel_file_module_name)
-    return found_modules
+def _import_submodules(package, passed=set()):
+    if isinstance(package, str):
+        package = import_module(package)
+
+    modules = []
+    if set(package.__path__) & passed:
+        return modules
+
+    passed |= set(package.__path__)
+
+    for loader, name, is_pkg in pkgutil.walk_packages(package.__path__, package.__name__ + '.'):
+        module = loader.find_module(name).load_module(name)
+        modules.append(module)
+        if is_pkg:
+            modules += _import_submodules(module)
+    return modules
 
 
 def _check_model(obj, models=None):
-    """Checks object if it's a peewee model"""
-    m_unique = obj not in models if models else True
-    return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta') and m_unique
-
-
-def load_models_via_autodiscover(autodiscover_regex, root_directory):
-    """Load models that placed inside root dir and match regex"""
-    modules = _get_modules_with_models(autodiscover_regex, root_directory)
-    models = []
-    for py_module in modules:
-        module = py_module
-        if isinstance(module, string_types):
-            if CURDIR not in sys.path:
-                sys.path.insert(0, CURDIR)
-            try:
-                module = import_module(module)
-            except TypeError:
-                # skip relative module path error
-                pass
-
-        if isinstance(module, ModuleType):
-            models.extend(list(filter(
-                lambda m: _check_model(m, models),
-                (getattr(module, model) for model in dir(module)))))
-    return models
+    """Checks object if it's a peewee model and unique."""
+    return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta')
 
 
 def compile_migrations(migrator, models, reverse=False):
