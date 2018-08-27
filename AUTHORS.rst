@@ -18,3 +18,4 @@ Contributors
 * Nick Shobe (https://github.com/dingus9)
 * Nils Werner (https://github.com/NilsJPWerner)
 * Vladimir Petrov (https://github.com/petrov-vova)
+* Nikita (https://github.com/demty)
