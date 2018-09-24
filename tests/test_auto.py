@@ -1,4 +1,5 @@
 import os.path as path
+import datetime as dt
 
 import peewee as pw
 from playhouse.postgres_ext import (ArrayField, BinaryJSONField, DateTimeTZField,
@@ -30,6 +31,7 @@ def test_auto():
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True, unique=True)
         tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', related_name='persons')
+        email = pw.CharField(index=True, unique=True)
 
     changes = diff_one(Person, Person_, migrator=migrator)
     assert len(changes) == 6
@@ -38,6 +40,19 @@ def test_auto():
     assert changes[-3] == "migrator.drop_not_null('person', 'last_name')"
     assert changes[-2] == "migrator.drop_index('person', 'last_name')"
     assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
+
+    migrator.drop_index('person', 'email')
+    migrator.add_index('person', 'email', unique=True)
+
+    class Person(pw.Model):
+        first_name = pw.CharField(unique=True)
+        last_name = pw.CharField(max_length=255, index=True)
+        dob = pw.DateField(null=True)
+        birthday = pw.DateField(default=dt.datetime.now)
+        email = pw.CharField(index=True, unique=True)
+
+    changes = diff_one(Person_, Person, migrator=migrator)
+    assert not changes
 
 
 def test_auto_postgresext():

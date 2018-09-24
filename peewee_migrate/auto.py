@@ -75,7 +75,7 @@ class Column(VanilaColumn):
 
 
 def diff_one(model1, model2, **kwargs):
-    """Find difference between Peewee models."""
+    """Find difference between given peewee models."""
     changes = []
 
     fields1 = model1._meta.fields
@@ -226,8 +226,7 @@ def field_to_params(field, **kwargs):
             isinstance(field.default, Hashable):
         params['default'] = field.default
 
-    index = field.index and not field.unique # Correct case where index and unique are both True
-    params['index'] = index, field.unique
+    params['index'] = field.index and not field.unique, field.unique
 
     params.pop('backref', None)  # Ignore backref
     return params

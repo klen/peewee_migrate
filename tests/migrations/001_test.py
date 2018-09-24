@@ -36,3 +36,4 @@ def migrate(migrator, database, **kwargs):
         last_name = pw.CharField(index=True)
         dob = pw.DateField(null=True)
         birthday = pw.DateField(default=dt.datetime.now)
+        email = pw.CharField(index=True, unique=True)

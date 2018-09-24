@@ -305,6 +305,9 @@ class Migrator(object):
         columns_ = []
         for col in columns:
             field = model._meta.fields.get(col)
+            if not field:
+                continue
+
             if len(columns) == 1:
                 field.unique = field.index = False
 
