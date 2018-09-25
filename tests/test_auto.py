@@ -54,6 +54,13 @@ def test_auto():
     changes = diff_one(Person_, Person, migrator=migrator)
     assert not changes
 
+    class Color(pw.Model):
+        id = pw.AutoField()
+        name = pw.CharField(default='red')
+
+    code = model_to_code(Color)
+    assert "DEFAULT 'red'" in code
+
 
 def test_auto_postgresext():
     from peewee_migrate.auto import model_to_code

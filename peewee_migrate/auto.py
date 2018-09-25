@@ -51,7 +51,7 @@ class Column(VanilaColumn):
             unique=field.unique, extra_parameters={}
         )
         if field.default is not None and not callable(field.default):
-            self.default = field.default
+            self.default = repr(field.default)
 
         if self.field_class in FIELD_TO_PARAMS:
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
@@ -222,8 +222,7 @@ def compare_fields(field1, field2, **kwargs):
 def field_to_params(field, **kwargs):
     params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
     if field.default is not None and \
-            not callable(field.default) and \
-            isinstance(field.default, Hashable):
+            not callable(field.default) and isinstance(field.default, Hashable):
         params['default'] = field.default
 
     params['index'] = field.index and not field.unique, field.unique
