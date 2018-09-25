@@ -51,7 +51,12 @@ class Column(VanilaColumn):
             unique=field.unique, extra_parameters={}
         )
         if field.default is not None and not callable(field.default):
-            self.default = field.default
+            if (isinstance(field, pw._StringField) and
+                    isinstance(field.default, pw.text_type) and not
+                    field.default.startswith("'")):
+                self.default = "'{0}'".format(field.default)
+            else:
+                self.default = "{0}".format(field.default)
 
         if self.field_class in FIELD_TO_PARAMS:
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
