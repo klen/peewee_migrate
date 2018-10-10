@@ -19,10 +19,6 @@ Peewee Migrate -- A simple migration engine for Peewee
     :target: https://pypi.python.org/pypi/peewee_migrate
     :alt: Version
 
-.. image:: http://img.shields.io/pypi/dm/peewee_migrate.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/peewee_migrate
-    :alt: Downloads
-
 .. _contents:
 
 .. contents::
