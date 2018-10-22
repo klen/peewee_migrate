@@ -174,7 +174,7 @@ def model_to_code(Model, **kwargs):
         (INDENT + 'schema = "%s"' % Model._meta.schema) if Model._meta.schema else '',
         (INDENT + 'primary_key = pw.CompositeKey{0}'.format(Model._meta.primary_key.field_names))
         if isinstance(Model._meta.primary_key, pw.CompositeKey) else '',
-        (INDENT + 'indexes = "%s' % Model._meta.indexes) if Model._meta.indexes else '',
+        (INDENT + 'indexes = %s' % Model._meta.indexes) if Model._meta.indexes else '',
     ])
 
     return template.format(classname=Model.__name__, fields=fields, meta=meta)
