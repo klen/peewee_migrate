@@ -29,7 +29,8 @@ def test_cli(tmpdir):
 
     result = runner.invoke(cli, [
         'rollback', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:', '001_test'])
-    assert result.exit_code == -1
+    assert result.exception
+    assert result.exception.message == 'No migrations are found.'
 
     result = runner.invoke(cli, [
         'list', '--directory=%s' % tmpdir, '--database=sqlite:///:memory:'])
