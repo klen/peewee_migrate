@@ -94,4 +94,4 @@ def test_auto_multi_column_index():
 
     code = model_to_code(Object)
     assert code
-    assert "indexes =" in code
+    assert "indexes = [(('first_name', 'last_name'), True)]" in code

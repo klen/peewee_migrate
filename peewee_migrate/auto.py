@@ -168,14 +168,14 @@ def model_to_code(Model, **kwargs):
         field_to_code(field, **kwargs) for field in Model._meta.sorted_fields
         if not (isinstance(field, pw.PrimaryKeyField) and field.name == 'id')
     ])
-    meta = INDENT + NEWLINE.join([
+    meta = INDENT + NEWLINE.join(filter(None, [
         'class Meta:',
         INDENT + 'table_name = "%s"' % Model._meta.table_name,
         (INDENT + 'schema = "%s"' % Model._meta.schema) if Model._meta.schema else '',
         (INDENT + 'primary_key = pw.CompositeKey{0}'.format(Model._meta.primary_key.field_names))
         if isinstance(Model._meta.primary_key, pw.CompositeKey) else '',
         (INDENT + 'indexes = %s' % Model._meta.indexes) if Model._meta.indexes else '',
-    ])
+    ]))
 
     return template.format(classname=Model.__name__, fields=fields, meta=meta)
 
