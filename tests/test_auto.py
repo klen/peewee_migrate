@@ -78,3 +78,20 @@ def test_auto_postgresext():
     assert code
     assert "json_field = pw_pext.JSONField()" in code
     assert "hstore_field = pw_pext.HStoreField(index=True)" in code
+
+
+def test_auto_multi_column_index():
+    from peewee_migrate.auto import model_to_code
+
+    class Object(pw.Model):
+        first_name = pw.CharField()
+        last_name = pw.CharField()
+
+        class Meta:
+            indexes = (
+                (('first_name', 'last_name'), True),
+            )
+
+    code = model_to_code(Object)
+    assert code
+    assert "indexes = [(('first_name', 'last_name'), True)]" in code
