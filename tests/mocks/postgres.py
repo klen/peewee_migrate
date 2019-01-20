@@ -1,4 +1,3 @@
-
 from psycopg2.extensions import connection, cursor
 
 class MockConnection(connection):
