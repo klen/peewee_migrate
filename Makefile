@@ -54,9 +54,11 @@ register:
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload: clean
-	@pip install twine wheel
-	@python setup.py sdist upload || true
-	@python setup.py bdist_wheel upload || true
+	@$(VIRTUAL_ENV)/bin/pip install twine wheel
+	@$(VIRTUAL_ENV)/bin/python setup.py sdist bdist_wheel
+	@$(VIRTUAL_ENV)/bin/twine upload dist/*.tar.gz || true
+	@$(VIRTUAL_ENV)/bin/twine upload dist/*.whl || true
+	@$(VIRTUAL_ENV)/bin/pip install -e $(CURDIR)
 
 # =============
 #  Development
