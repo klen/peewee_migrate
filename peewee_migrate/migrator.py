@@ -77,10 +77,10 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 
     def alter_change_column(self, table, column_name, field):
         """Support change columns."""
-        clause = super(PostgresqlMigrator, self).alter_change_column(table, column_name, field)
-        field_clause = clause.nodes[-1]
-        field_clause.nodes.insert(1, SQL('TYPE'))
-        return clause
+        context = super(PostgresqlMigrator, self).alter_change_column(table, column_name, field)
+        context._sql.insert(-1, 'TYPE')
+        context._sql.insert(-1, ' ')
+        return context
 
 
 class SqliteMigrator(SchemaMigrator, SqM):
