@@ -10,6 +10,7 @@ Development Lead
 Contributors
 ------------
 
+* Channel Cat (https://github.com/channelcat)
 * Dima Kurguzov (https://github.com/koorgoo)
 * Dominik Kapisinsky (https://github.com/kapucko)
 * Eric Tang (https://github.com/EenTang)
