@@ -2,5 +2,5 @@
 -r requirements.txt
 
 ipdb==0.10.3
-pytest==4.1.1
+pytest==4.2.0
 psycopg2            >= 2.7.3.1
