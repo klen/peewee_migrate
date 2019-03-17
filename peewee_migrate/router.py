@@ -269,7 +269,10 @@ def load_models(module):
     )}
 
 
-def _import_submodules(package, passed=set()):
+def _import_submodules(package, passed=None):
+    if not passed:
+        passed = set()
+
     if isinstance(package, str):
         package = import_module(package)
 
