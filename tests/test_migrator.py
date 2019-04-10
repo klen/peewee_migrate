@@ -17,7 +17,7 @@ def test_migrator():
         number = pw.CharField()
         uid = pw.CharField(unique=True)
 
-        customer_id = pw.ForeignKeyField(Customer, db_column='customer_id')
+        customer_id = pw.ForeignKeyField(Customer, column_name='customer_id')
 
     assert Order == migrator.orm['order']
     migrator.run()

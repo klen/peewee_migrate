@@ -185,18 +185,18 @@ class Migrator(object):
         """Change fields."""
         for name, field in fields.items():
             old_field = model._meta.fields.get(name, field)
-            old_db_column = old_field and old_field.column_name
+            old_column_name = old_field and old_field.column_name
 
             model._meta.add_field(name, field)
 
             if isinstance(old_field, pw.ForeignKeyField):
                 self.ops.append(self.migrator.drop_foreign_key_constraint(
-                    model._meta.table_name, old_db_column))
+                    model._meta.table_name, old_column_name))
 
-            if old_db_column != field.column_name:
+            if old_column_name != field.column_name:
                 self.ops.append(
                     self.migrator.rename_column(
-                        model._meta.table_name, old_db_column, field.column_name))
+                        model._meta.table_name, old_column_name, field.column_name))
 
             if isinstance(field, pw.ForeignKeyField):
                 on_delete = field.on_delete if field.on_delete else 'RESTRICT'

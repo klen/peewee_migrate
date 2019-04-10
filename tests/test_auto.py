@@ -30,7 +30,7 @@ def test_auto():
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True, unique=True)
-        tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', related_name='persons')
+        tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', backref='persons')
         email = pw.CharField(index=True, unique=True)
 
     changes = diff_one(Person, Person_, migrator=migrator)

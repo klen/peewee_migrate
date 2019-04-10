@@ -2,4 +2,4 @@
 -r requirements.txt
 
 pytest==4.4.0
-psycopg2            >= 2.7.3.1
+psycopg2-binary>=2.8.1
