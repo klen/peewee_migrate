@@ -80,7 +80,6 @@ class BaseRouter(object):
                 modules = [auto]
                 if isinstance(auto, bool):
                     modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
-                    modules = ['example', 'tests']
 
                 models = [m for module in modules for m in load_models(module)]
 
