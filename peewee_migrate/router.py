@@ -17,6 +17,7 @@ from peewee_migrate.migrator import Migrator
 CLEAN_RE = re.compile(r'\s+$', re.M)
 CURDIR = os.getcwd()
 DEFAULT_MIGRATE_DIR = os.path.join(CURDIR, 'migrations')
+UNDEFINED = object()
 VOID = lambda m, d: None # noqa
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt')) as t:
     MIGRATE_TEMPLATE = t.read()
@@ -160,7 +161,7 @@ class BaseRouter(object):
 
                 self.logger.info('Done %s', name)
 
-        except Exception as exc:
+        except Exception:
             self.database.rollback()
             operation = 'Migration' if not downgrade else 'Rollback'
             self.logger.exception('%s failed: %s', operation, name)
@@ -270,8 +271,8 @@ def load_models(module):
     )}
 
 
-def _import_submodules(package, passed=None):
-    if not passed:
+def _import_submodules(package, passed=UNDEFINED):
+    if passed is UNDEFINED:
         passed = set()
 
     if isinstance(package, str):

@@ -54,6 +54,14 @@ def test_router():
 
     os.remove(os.path.join(MIGRATIONS_DIR, '001_initial.py'))
 
+    from peewee_migrate.router import load_models
+
+    models = load_models('tests.test_autodiscover')
+    assert models
+
+    models = load_models('tests.test_autodiscover')
+    assert models
+
 
 def test_router_compile(tmpdir):
     from peewee_migrate.cli import get_router
