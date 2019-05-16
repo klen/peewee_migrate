@@ -4,6 +4,8 @@ import sys
 from importlib import import_module
 
 import pkgutil
+from types import ModuleType
+
 import mock
 import peewee as pw
 from cached_property import cached_property
@@ -265,7 +267,11 @@ class ModuleRouter(BaseRouter):
 
 def load_models(module):
     """Load models from given module."""
-    modules = _import_submodules(module)
+    if isinstance(module, ModuleType):
+        # if itself is module already
+        modules = [module]
+    else:
+        modules = _import_submodules(module)
     return {m for module in modules for m in filter(
         _check_model, (getattr(module, name) for name in dir(module))
     )}
