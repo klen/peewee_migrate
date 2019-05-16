@@ -61,6 +61,9 @@ def test_router():
 
     models = load_models('tests.test_autodiscover')
     assert models
+    from .test_autodiscover.some_folder_one import one_models
+    models = load_models(one_models)
+    assert models
 
 
 def test_router_compile(tmpdir):
