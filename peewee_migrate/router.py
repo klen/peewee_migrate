@@ -78,9 +78,12 @@ class BaseRouter(object):
             # Need to append the CURDIR to the path for import to work.
             sys.path.append(CURDIR)
             try:
-                modules = [auto]
                 if isinstance(auto, bool):
                     modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
+                elif isinstance(auto, list):
+                    modules = auto
+                else:
+                    modules = [auto]
 
                 models = [m for module in modules for m in load_models(module)]
 
