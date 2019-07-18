@@ -4,13 +4,15 @@ import os
 import mock
 import peewee as pw
 
-
 MIGRATIONS_DIR = os.path.join('tests', 'migrations')
 
 
 def test_router():
     from peewee_migrate import MigrateHistory
     from peewee_migrate.cli import get_router
+
+    class Dummy(pw.Model):
+        id = pw.AutoField()
 
     router = get_router(MIGRATIONS_DIR, 'sqlite:///:memory:')
 
@@ -24,6 +26,22 @@ def test_router():
     router.create('new')
     assert router.todo == ['001_test', '002_test', '003_tespy', '004_new']
     os.remove(os.path.join(MIGRATIONS_DIR, '004_new.py'))
+
+    router.create('new1', auto=Dummy)
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_new1']
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new1.py'))
+
+    router.create('new2', auto=[Dummy])
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_new2']
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new2.py'))
+
+    router.create('new3', auto='tests.models')
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_new3']
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new3.py'))
+
+    router.create('new4', auto=['tests.models'])
+    assert router.todo == ['001_test', '002_test', '003_tespy', '004_new4']
+    os.remove(os.path.join(MIGRATIONS_DIR, '004_new4.py'))
 
     MigrateHistory.create(name='001_test')
     assert router.diff == ['002_test', '003_tespy']
