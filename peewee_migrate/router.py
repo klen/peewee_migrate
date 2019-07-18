@@ -78,14 +78,19 @@ class BaseRouter(object):
             # Need to append the CURDIR to the path for import to work.
             sys.path.append(CURDIR)
             try:
-                if isinstance(auto, bool):
-                    modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
-                elif isinstance(auto, list):
-                    modules = auto
+                if check_models(auto):
+                    if isinstance(auto, list):
+                        models = auto
+                    else:
+                        models = [auto]
                 else:
-                    modules = [auto]
-
-                models = [m for module in modules for m in load_models(module)]
+                    if isinstance(auto, bool):
+                        modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
+                    elif isinstance(auto, list):
+                        modules = auto
+                    else:
+                        modules = [auto]
+                    models = [m for module in modules for m in load_models(module)]
 
             except ImportError:
                 return self.logger.error("Can't import models module: %s", auto)
@@ -264,6 +269,18 @@ class ModuleRouter(BaseRouter):
     def read(self, name):
         mod = getattr(self.migrate_module, name)
         return getattr(mod, 'migrate', VOID), getattr(mod, 'rollback', VOID)
+
+
+def check_models(model):
+    if isinstance(model, pw.ModelBase):
+        return True
+    elif isinstance(model, list):
+        for m in model:
+            if not isinstance(m, pw.ModelBase):
+                return False
+        return True
+    else:
+        return False
 
 
 def load_models(module):
