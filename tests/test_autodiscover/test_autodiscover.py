@@ -7,8 +7,8 @@ def fqn(obj):
 
 def test_autodiscover_two_files_with_models():
     result = load_models('tests.test_autodiscover')
-    result = {fqn(x) for x in result}
-    assert result == {
+    result = sorted(fqn(x) for x in result)
+    assert result == sorted([
         'tests.test_autodiscover.some_folder_one.another_models.Object1',
         'tests.test_autodiscover.some_folder_one.another_models.Object2',
         'tests.test_autodiscover.some_folder_one.one_models.Object3',
@@ -19,4 +19,4 @@ def test_autodiscover_two_files_with_models():
         'tests.test_autodiscover.some_folder_two.another_model.Object2',
         'tests.test_autodiscover.some_folder_two.base_model.BaseModel',
         'tests.test_autodiscover.some_folder_two.one_model.Object3',
-    }
+    ])
