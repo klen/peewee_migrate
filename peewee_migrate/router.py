@@ -279,16 +279,20 @@ def _import_submodules(package, passed=UNDEFINED):
         package = import_module(package)
 
     modules = []
-    if set(package.__path__) & passed:
-        return modules
-
-    passed |= set(package.__path__)
 
     for loader, name, is_pkg in pkgutil.walk_packages(package.__path__, package.__name__ + '.'):
-        module = loader.find_module(name).load_module(name)
+        if name in passed:
+            continue
+        passed.add(name)
+
+        module = sys.modules.get(name)
+        if module is None:
+            module = loader.find_module(name).load_module(name)
+
         modules.append(module)
         if is_pkg:
-            modules += _import_submodules(module)
+            modules += _import_submodules(module, passed=passed)
+
     return modules
 
 

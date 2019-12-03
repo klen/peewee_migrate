@@ -2,7 +2,7 @@ from peewee_migrate.router import load_models
 
 
 def fqn(obj):
-    return obj.__module__ + '.' + obj.__qualname__
+    return obj.__module__ + '.' + obj.__name__
 
 
 def test_autodiscover_two_files_with_models():
