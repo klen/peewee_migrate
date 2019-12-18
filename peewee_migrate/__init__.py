@@ -11,7 +11,7 @@ import peewee as pw
 # Package information
 # ===================
 
-__version__ = "1.1.6"
+__version__ = "1.2.0"
 __project__ = "peewee_migrate2"
 __author__ = "spumer, Kirill Klenov"
 __license__ = "BSD"
