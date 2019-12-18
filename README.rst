@@ -1,22 +1,24 @@
-Peewee Migrate
-##############
+Peewee Migrate 2
+################
 
 .. _description:
 
-Peewee Migrate -- A simple migration engine for Peewee
+Peewee Migrate 2 -- A simple migration engine for Peewee
+
 
 .. _badges:
 
-.. image:: http://img.shields.io/travis/klen/peewee_migrate.svg?style=flat-square
-    :target: http://travis-ci.org/klen/peewee_migrate
+.. image:: https://travis-ci.org/spumer/peewee_migrate.svg
+    :target: http://travis-ci.org/spumer/peewee_migrate
     :alt: Build Status
 
-.. image:: http://img.shields.io/coveralls/klen/peewee_migrate.svg?style=flat-square
-    :target: https://coveralls.io/r/klen/pewee_migrate
+
+.. image:: https://coveralls.io/repos/github/spumer/peewee_migrate/badge.svg
+    :target: https://coveralls.io/github/spumer/peewee_migrate
     :alt: Coverals
 
-.. image:: http://img.shields.io/pypi/v/peewee_migrate.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/peewee_migrate
+.. image:: http://img.shields.io/pypi/v/peewee_migrate2.svg?style=flat-square
+    :target: https://pypi.python.org/pypi/peewee_migrate2
     :alt: Version
 
 .. _contents:
@@ -24,6 +26,19 @@ Peewee Migrate -- A simple migration engine for Peewee
 .. contents::
 
 .. _requirements:
+
+
+Why Fork?
+=========
+
+It's a fork of original https://github.com/klen/peewee_migrate. Thank ``klen`` for that!
+
+But ``klen`` don't support project for a long time.
+
+To fix critical project was forked and development continued.
+
+All previous compatibilities will be preserved.
+
 
 Requirements
 =============

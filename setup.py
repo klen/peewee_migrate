@@ -29,9 +29,8 @@ setup(
     platforms=('Any'),
     keywords = "django flask sqlalchemy testing mock stub mongoengine data".split(), # noqa
 
-    author='Kirill Klenov',
-    author_email='horneds@gmail.com',
-    url='https://github.com/klen/peewee_migrate',
+    author='spumer, Kirill Klenov',
+    url='https://github.com/spumer/peewee_migrate',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

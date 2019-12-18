@@ -2,10 +2,16 @@
 Credits
 =======
 
+Initial Author
+--------------
+
+* Kirill Klenov <horneds@gmail.com>
+
+
 Development Lead
 ----------------
 
-* Kirill Klenov <horneds@gmail.com>
+* spumer
 
 Contributors
 ------------

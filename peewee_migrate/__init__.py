@@ -12,8 +12,8 @@ import peewee as pw
 # ===================
 
 __version__ = "1.1.6"
-__project__ = "peewee_migrate"
-__author__ = "Kirill Klenov <horneds@gmail.com>"
+__project__ = "peewee_migrate2"
+__author__ = "spumer, Kirill Klenov"
 __license__ = "BSD"
 
 
