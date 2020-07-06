@@ -11,7 +11,6 @@ from peewee_migrate.compat import string_types
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
-ROLLBACK_NUMBER_RE = re.compile(r'^(\d+)$')
 
 
 def get_router(directory, database, verbose=0):
@@ -86,24 +85,23 @@ def create(name, database=None, auto=False, auto_source=False, directory=None, v
 
 
 @cli.command()
-@click.argument('name', required=False, default='1')
+@click.argument('name', required=False)
+@click.option('--count', required=False, default=1, type=int)
 @click.option('--database', default=None, help="Database connection")
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
-def rollback(name, database=None, directory=None, verbose=None):
+def rollback(name, count, database=None, directory=None, verbose=None):
     """
     Rollback a migration with given name or number of migrations with given
     name as integer number
     """
     router = get_router(directory, database, verbose)
-    search = ROLLBACK_NUMBER_RE.search(name)
-    if search:
-        number_to_rollback = int(search.group(1))
-        if len(router.done) < number_to_rollback:
+    if not name:
+        if len(router.done) < count:
             raise RuntimeError(
-                'Unable to rollback %s migrations from %s: %s' % 
-                (number_to_rollback, len(router.done), router.done))
-        for _ in range(number_to_rollback):
+                'Unable to rollback %s migrations from %s: %s' %
+                (count, len(router.done), router.done))
+        for _ in range(count):
             router = get_router(directory, database, verbose)
             name = router.done[-1]
             router.rollback(name)
