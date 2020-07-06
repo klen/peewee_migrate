@@ -1,8 +1,7 @@
 from click.testing import CliRunner
 import pytest
 
-from peewee_migrate.cli import cli
-from peewee_migrate.cli import get_router
+from peewee_migrate.cli import cli, get_router
 
 runner = CliRunner()
 
@@ -72,6 +71,12 @@ def test_list(dir_option, db_option, migrations):
 def test_rollback(dir_option, db_option, router, migrations):
     router().run()
 
+    count_overflow = len(migrations) + 1
+    result = runner.invoke(cli, ['rollback', dir_option, db_option, '--count=%s' % count_overflow])
+    assert result.exception
+    assert 'Unable to rollback %s migrations' % count_overflow in result.exception.args[0]
+    assert router().done == migrations
+
     result = runner.invoke(cli, ['rollback', dir_option, db_option])
     assert not result.exception
     assert router().done == migrations[:-1]
@@ -87,6 +92,7 @@ def test_rollback(dir_option, db_option, router, migrations):
     result = runner.invoke(cli, ['rollback', dir_option, db_option, '005_test'])
     assert result.exception
     assert result.exception.args[0] == 'Only last migration can be canceled.'
+    assert router().done == migrations[:-4]
 
 
 def test_fake(dir_option, db_option, migrations_str, router):

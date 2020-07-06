@@ -86,14 +86,21 @@ def create(name, database=None, auto=False, auto_source=False, directory=None, v
 
 @cli.command()
 @click.argument('name', required=False)
-@click.option('--count', required=False, default=1, type=int)
+@click.option('--count',
+              required=False, 
+              default=1, 
+              type=int, 
+              help="Number of last migrations to be rolled back."
+                   "Ignored in case of non-empty name")
 @click.option('--database', default=None, help="Database connection")
-@click.option('--directory', default='migrations', help="Directory where migrations are stored")
+@click.option('--directory', 
+              default='migrations', 
+              help="Directory where migrations are stored")
 @click.option('-v', '--verbose', count=True)
 def rollback(name, count, database=None, directory=None, verbose=None):
     """
-    Rollback a migration with given name or number of migrations with given
-    name as integer number
+    Rollback a migration with given name or number of last migrations 
+    with given --count option as integer number
     """
     router = get_router(directory, database, verbose)
     if not name:
