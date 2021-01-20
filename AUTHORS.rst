@@ -15,6 +15,7 @@ Contributors
 * Dominik Kapisinsky (https://github.com/kapucko)
 * Eric Tang (https://github.com/EenTang)
 * Hari Jiang (https://github.com/jjyr)
+* Keigo Hattori (https://github.com/keigohtr)
 * Matt Riggott (https://github.com/flother)
 * Michael Lavers (https://github.com/kolanos)
 * Nick Shobe (https://github.com/dingus9)
