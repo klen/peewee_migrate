@@ -3,7 +3,7 @@ Peewee Migrate
 
 .. _description:
 
-Peewee Migrate -- A simple migration engine for Peewee
+Peewee Migrate -- A simple migration engine for Peewee_ ORM
 
 .. _badges:
 
@@ -169,3 +169,4 @@ Licensed under a `BSD license`_.
 .. _klen: https://klen.github.io/
 .. _Flask: http://flask.pocoo.org/
 .. _Flask-PW: https://github.com/klen/flask-pw
+.. _Peewee: http://docs.peewee-orm.com/en/latest

@@ -1,14 +1,15 @@
+"""Migration router."""
+
 import os
+import pkgutil
 import re
 import sys
+from functools import cached_property
 from importlib import import_module
-
-import pkgutil
 from types import ModuleType
+from unittest import mock
 
-import mock
 import peewee as pw
-from cached_property import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
@@ -31,6 +32,7 @@ class BaseRouter(object):
 
     def __init__(self, database, migrate_table='migratehistory', ignore=None,
                  schema=None, logger=LOGGER):
+        """Initialize the router."""
         self.database = database
         self.migrate_table = migrate_table
         self.schema = schema
@@ -50,6 +52,7 @@ class BaseRouter(object):
 
     @property
     def todo(self):
+        """Get migrations to run."""
         raise NotImplementedError
 
     @property
@@ -73,6 +76,7 @@ class BaseRouter(object):
 
     def create(self, name='auto', auto=False):
         """Create a migration.
+
         :param auto: Python module path to scan for models.
         """
         migrate = rollback = ''
@@ -97,7 +101,7 @@ class BaseRouter(object):
 
             migrate = compile_migrations(self.migrator, models)
             if not migrate:
-                return self.logger.warn('No changes found.')
+                return self.logger.warning('No changes found.')
 
             rollback = compile_migrations(self.migrator, models, reverse=True)
 
@@ -198,7 +202,7 @@ class BaseRouter(object):
 
         migrator = self.migrator
         self.run_one(name, migrator, False, True)
-        self.logger.warn('Downgraded migration: %s', name)
+        self.logger.warning('Downgraded migration: %s', name)
 
 
 class Router(BaseRouter):
@@ -213,7 +217,7 @@ class Router(BaseRouter):
     def todo(self):
         """Scan migrations in file system."""
         if not os.path.exists(self.migrate_dir):
-            self.logger.warn('Migration directory: %s does not exist.', self.migrate_dir)
+            self.logger.warning('Migration directory: %s does not exist.', self.migrate_dir)
             os.makedirs(self.migrate_dir)
         return sorted(f[:-3] for f in os.listdir(self.migrate_dir) if self.filemask.match(f))
 
@@ -253,6 +257,7 @@ class Router(BaseRouter):
 class ModuleRouter(BaseRouter):
 
     def __init__(self, database, migrate_module='migrations', **kwargs):
+        """Initialize the router."""
         super(ModuleRouter, self).__init__(database, **kwargs)
 
         if isinstance(migrate_module, string_types):
@@ -261,6 +266,7 @@ class ModuleRouter(BaseRouter):
         self.migrate_module = migrate_module
 
     def read(self, name):
+        """Read migrations from a module."""
         mod = getattr(self.migrate_module, name)
         return getattr(mod, 'migrate', VOID), getattr(mod, 'rollback', VOID)
 
@@ -299,7 +305,7 @@ def _import_submodules(package, passed=UNDEFINED):
 
 
 def _check_model(obj, models=None):
-    """Checks object if it's a peewee model and unique."""
+    """Check object if it's a peewee model and unique."""
     return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta')
 
 

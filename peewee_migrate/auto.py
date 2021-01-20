@@ -1,5 +1,7 @@
+from collections import OrderedDict
+from collections.abc import Hashable
+
 import peewee as pw
-from collections import Hashable, OrderedDict
 from playhouse.reflection import Column as VanilaColumn
 
 
@@ -16,7 +18,8 @@ FIELD_MODULES_MAP = {
 }
 
 
-def fk_to_params(field):
+def fk_to_params(field: pw.ForeignKeyField):
+    """Get params from the given fk."""
     params = {}
     if field.on_delete is not None:
         params['on_delete'] = "'%s'" % field.on_delete
@@ -25,7 +28,8 @@ def fk_to_params(field):
     return params
 
 
-def dtf_to_params(field):
+def dtf_to_params(field: pw.DateTimeField):
+    """Get params from the given datetime field."""
     params = {}
     if not isinstance(field.formats, list):
         params['formats'] = field.formats

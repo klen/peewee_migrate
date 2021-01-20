@@ -83,6 +83,7 @@ def test_migrator():
     migrator.change_columns(Order, identifier=pw.IntegerField(default=0))
     assert not Order._meta.indexes
 
+
 def test_migrator_postgres():
     """
     Ensure change_fields generates queries and
@@ -100,6 +101,7 @@ def test_migrator_postgres():
     database = connect('postgres:///fake')
 
     migrator = Migrator(database)
+
     @migrator.create_table
     class User(pw.Model):
         name = pw.CharField()
@@ -110,8 +112,9 @@ def test_migrator_postgres():
     # Date -> DateTime
     migrator.change_fields('user', created_at=pw.DateTimeField())
     migrator.run()
-    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in database.cursor().queries
-    
+    assert ('ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP'
+            in database.cursor().queries)
+
     # Char -> Text
     migrator.change_fields('user', name=pw.TextField())
     migrator.run()
