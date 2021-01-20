@@ -149,8 +149,10 @@ class BaseRouter(object):
         try:
             migrate, rollback = self.read(name)
             if fake:
+                mocked_cursor = mock.Mock()
+                mocked_cursor.fetch_one.return_value = None
                 with mock.patch('peewee.Model.select'):
-                    with mock.patch('peewee.Database.execute_sql'):
+                    with mock.patch('peewee.Database.execute_sql', return_value=mocked_cursor):
                         migrate(migrator, self.database, fake=fake)
 
                 if force:

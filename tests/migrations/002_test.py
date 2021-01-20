@@ -30,3 +30,6 @@ def migrate(migrator, database, **kwargs):
         'tag', created_at=pw.DateTimeField(null=True))
 
     migrator.add_index('person', 'first_name', unique=True)
+
+    Person = migrator.orm['person']
+    Person.create(first_name='test3', last_name='test3', email='test3@google.com')
