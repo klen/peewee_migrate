@@ -1,6 +1,6 @@
 2021-01-20  klen
 
-	* Drop python2 support
+	* Drop python2 support (python 3.8 ia required)
 
 2018-11-02  klen
 
