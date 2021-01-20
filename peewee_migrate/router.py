@@ -6,12 +6,16 @@ from importlib import import_module
 import pkgutil
 import peewee as pw
 from unittest import mock
-from functools import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
 from peewee_migrate.compat import string_types, exec_in
 from peewee_migrate.migrator import Migrator
+
+try:
+    from functools import cached_property
+except ImportError:
+    from cached_property import cached_property
 
 
 CLEAN_RE = re.compile(r'\s+$', re.M)
