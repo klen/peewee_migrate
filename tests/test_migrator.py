@@ -80,6 +80,11 @@ def test_migrator():
     assert Order.identifier.unique
     assert Order._meta.indexes
 
+    migrator.rename_table(Order, 'orders')
+    assert migrator.orm['orders']
+    assert migrator.orm['orders']._meta.table_name == 'orders'
+    migrator.run()
+
     migrator.change_columns(Order, identifier=pw.IntegerField(default=0))
     assert not Order._meta.indexes
 
