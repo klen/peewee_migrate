@@ -1,16 +1,20 @@
+"""Migration router."""
+
 import os
+import pkgutil
 import re
 import sys
 from importlib import import_module
-
-import pkgutil
-import peewee as pw
+from types import ModuleType
 from unittest import mock
+
+import peewee as pw
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
 from peewee_migrate.compat import string_types, exec_in
 from peewee_migrate.migrator import Migrator
+
 
 try:
     from functools import cached_property
@@ -33,6 +37,7 @@ class BaseRouter(object):
 
     def __init__(self, database, migrate_table='migratehistory', ignore=None,
                  schema=None, logger=LOGGER):
+        """Initialize the router."""
         self.database = database
         self.migrate_table = migrate_table
         self.schema = schema
@@ -52,6 +57,7 @@ class BaseRouter(object):
 
     @property
     def todo(self):
+        """Get migrations to run."""
         raise NotImplementedError
 
     @property
@@ -75,6 +81,7 @@ class BaseRouter(object):
 
     def create(self, name='auto', auto=False):
         """Create a migration.
+
         :param auto: Python module path to scan for models.
         """
         migrate = rollback = ''
@@ -255,6 +262,7 @@ class Router(BaseRouter):
 class ModuleRouter(BaseRouter):
 
     def __init__(self, database, migrate_module='migrations', **kwargs):
+        """Initialize the router."""
         super(ModuleRouter, self).__init__(database, **kwargs)
 
         if isinstance(migrate_module, string_types):
@@ -263,13 +271,18 @@ class ModuleRouter(BaseRouter):
         self.migrate_module = migrate_module
 
     def read(self, name):
+        """Read migrations from a module."""
         mod = getattr(self.migrate_module, name)
         return getattr(mod, 'migrate', VOID), getattr(mod, 'rollback', VOID)
 
 
 def load_models(module):
     """Load models from given module."""
-    modules = _import_submodules(module)
+    if isinstance(module, ModuleType):
+        # if itself is module already
+        modules = [module]
+    else:
+        modules = _import_submodules(module)
     return {m for module in modules for m in filter(
         _check_model, (getattr(module, name) for name in dir(module))
     )}
@@ -297,7 +310,7 @@ def _import_submodules(package, passed=UNDEFINED):
 
 
 def _check_model(obj, models=None):
-    """Checks object if it's a peewee model and unique."""
+    """Check object if it's a peewee model and unique."""
     return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta')
 
 

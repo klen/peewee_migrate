@@ -4,7 +4,6 @@ import os
 from unittest import mock
 import peewee as pw
 
-
 MIGRATIONS_DIR = os.path.join('tests', 'migrations')
 
 
@@ -60,6 +59,14 @@ def test_router():
     assert models
 
     models = load_models('tests.test_autodiscover')
+    assert models
+
+    from .test_autodiscover.some_folder_one import one_models
+
+    models = load_models(one_models)
+    assert models
+
+    models = load_models(one_models)
     assert models
 
 
