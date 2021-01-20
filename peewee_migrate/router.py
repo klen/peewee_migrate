@@ -88,24 +88,17 @@ class BaseRouter(object):
         if auto:
             # Need to append the CURDIR to the path for import to work.
             sys.path.append(CURDIR)
-            try:
-                if check_models(auto):
-                    if isinstance(auto, list):
-                        models = auto
-                    else:
-                        models = [auto]
-                else:
+            models = auto if isinstance(auto, list) else [auto]
+            if not all([_check_model(m) for m in models]):
+                try:
+                    modules = models
                     if isinstance(auto, bool):
                         modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
-                    elif isinstance(auto, list):
-                        modules = auto
-                    else:
-                        modules = [auto]
                     models = [m for module in modules for m in load_models(module)]
 
-            except ImportError as exc:
-                self.logger.exception(exc)
-                return self.logger.error("Can't import models module: %s", auto)
+                except ImportError as exc:
+                    self.logger.exception(exc)
+                    return self.logger.error("Can't import models module: %s", auto)
 
             if self.ignore:
                 models = [m for m in models if m._meta.name not in self.ignore]
@@ -285,18 +278,6 @@ class ModuleRouter(BaseRouter):
         return getattr(mod, 'migrate', VOID), getattr(mod, 'rollback', VOID)
 
 
-def check_models(model):
-    if isinstance(model, pw.ModelBase):
-        return True
-    elif isinstance(model, list):
-        for m in model:
-            if not isinstance(m, pw.ModelBase):
-                return False
-        return True
-    else:
-        return False
-
-
 def load_models(module):
     """Load models from given module."""
     if isinstance(module, ModuleType):
@@ -330,7 +311,7 @@ def _import_submodules(package, passed=UNDEFINED):
     return modules
 
 
-def _check_model(obj, models=None):
+def _check_model(obj):
     """Check object if it's a peewee model and unique."""
     return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, '_meta')
 
