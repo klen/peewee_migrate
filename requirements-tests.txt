@@ -1,5 +1,0 @@
--e .
--r requirements.txt
-
-pytest==4.4.0
-psycopg2-binary>=2.8.1

@@ -1,7 +1,7 @@
-""" Tests for `peewee_migrate` module. """
+"""Tests for `peewee_migrate` module."""
 import os
 
-import mock
+from unittest import mock
 import peewee as pw
 
 

@@ -4,9 +4,9 @@ import sys
 from importlib import import_module
 
 import pkgutil
-import mock
 import peewee as pw
-from cached_property import cached_property
+from unittest import mock
+from functools import cached_property
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
@@ -95,7 +95,7 @@ class BaseRouter(object):
 
             migrate = compile_migrations(self.migrator, models)
             if not migrate:
-                return self.logger.warn('No changes found.')
+                return self.logger.warning('No changes found.')
 
             rollback = compile_migrations(self.migrator, models, reverse=True)
 
@@ -196,7 +196,7 @@ class BaseRouter(object):
 
         migrator = self.migrator
         self.run_one(name, migrator, False, True)
-        self.logger.warn('Downgraded migration: %s', name)
+        self.logger.warning('Downgraded migration: %s', name)
 
 
 class Router(BaseRouter):
@@ -211,7 +211,7 @@ class Router(BaseRouter):
     def todo(self):
         """Scan migrations in file system."""
         if not os.path.exists(self.migrate_dir):
-            self.logger.warn('Migration directory: %s does not exist.', self.migrate_dir)
+            self.logger.warning('Migration directory: %s does not exist.', self.migrate_dir)
             os.makedirs(self.migrate_dir)
         return sorted(f[:-3] for f in os.listdir(self.migrate_dir) if self.filemask.match(f))
 
