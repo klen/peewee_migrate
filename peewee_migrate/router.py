@@ -150,7 +150,7 @@ class BaseRouter(object):
             migrate, rollback = self.read(name)
             if fake:
                 with mock.patch('peewee.Model.select'):
-                    with mock.patch('peewee.Query._execute'):
+                    with mock.patch('peewee.Database.execute_sql'):
                         migrate(migrator, self.database, fake=fake)
 
                 if force:
