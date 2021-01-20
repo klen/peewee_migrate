@@ -7,17 +7,13 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 
 .. _badges:
 
-.. image:: http://img.shields.io/travis/klen/peewee_migrate.svg?style=flat-square
-    :target: http://travis-ci.org/klen/peewee_migrate
-    :alt: Build Status
+.. image:: https://github.com/klen/peewee_migrate/workflows/tests/badge.svg
+    :target: https://github.com/klen/peewee_migrate/actions
+    :alt: Tests Status
 
-.. image:: http://img.shields.io/coveralls/klen/peewee_migrate.svg?style=flat-square
-    :target: https://coveralls.io/r/klen/pewee_migrate
-    :alt: Coverals
-
-.. image:: http://img.shields.io/pypi/v/peewee_migrate.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/peewee_migrate
-    :alt: Version
+.. image:: https://img.shields.io/pypi/v/peewee_migrate
+    :target: https://pypi.org/project/peewee_migrate/
+    :alt: PYPI Version
 
 .. _contents:
 
@@ -35,6 +31,7 @@ Dependency Note
 ---------------
 
 For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``.
+For ``Python<3.8`` please use ``Peewee-Migrate==1.1.6``.
 
 .. _installation:
 
@@ -159,7 +156,7 @@ See `AUTHORS.rst`
 .. _license:
 
 License
-=======
+========
 
 Licensed under a `BSD license`_.
 
