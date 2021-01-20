@@ -97,9 +97,29 @@ Run migrations: ::
         -v, --verbose
         --help            Show this message and exit.
 
+Rollback migrations: ::
+
+    $ pw_migrate rollback --help
+
+    Usage: pw_migrate rollback [OPTIONS] [NAME]
+
+        Rollback a migration with given name or number of last migrations  with
+        given --count option as integer number
+
+    Options:
+        --count INTEGER   Number of last migrations to be rolled back.Ignored in
+                            case of non-empty name
+
+        --database TEXT   Database connection
+        --directory TEXT  Directory where migrations are stored
+        -v, --verbose
+        --help            Show this message and exit.
+
+
 From python
 -----------
-::
+
+.. code-block:: python
 
     from peewee_migrate import Router
     from peewee import SqliteDatabase
@@ -122,7 +142,9 @@ By default, migration files are looked up in ``os.getcwd()/migrations`` director
 
 Migration files are sorted and applied in ascending order per their filename.
 
-Each migration file must specify ``migrate()`` function and may specify ``rollback()`` function::
+Each migration file must specify ``migrate()`` function and may specify ``rollback()`` function
+
+.. code-block:: python
 
     def migrate(migrator, database, fake=False, **kwargs):
         pass
