@@ -6,8 +6,6 @@ import sys
 import click
 from playhouse.db_url import connect
 
-from peewee_migrate.compat import string_types
-
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
@@ -16,7 +14,6 @@ CLEAN_RE = re.compile(r'\s+$', re.M)
 def get_router(directory, database, verbose=0):
     """Load and initialize a router."""
     from peewee_migrate import LOGGER
-    from peewee_migrate.compat import exec_in
     from peewee_migrate.router import Router
 
     logging_level = VERBOSE[verbose]
@@ -25,7 +22,8 @@ def get_router(directory, database, verbose=0):
     ignore = schema = None
     try:
         with open(os.path.join(directory, 'conf.py')) as cfg:
-            exec_in(cfg.read(), config, config)
+            code = compile(cfg.read(), '<string>', 'exec', dont_inherit=True)
+            exec(code, config, config)
             database = config.get('DATABASE', database)
             ignore = config.get('IGNORE', ignore)
             schema = config.get('SCHEMA', schema)
@@ -34,7 +32,7 @@ def get_router(directory, database, verbose=0):
     except IOError:
         pass
 
-    if isinstance(database, string_types):
+    if isinstance(database, str):
         database = connect(database)
 
     LOGGER.setLevel(logging_level)
