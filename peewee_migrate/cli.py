@@ -70,7 +70,7 @@ def migrate(name=None, database=None, directory=None, verbose=None, fake=False):
 @click.option('--auto', default=False, is_flag=True, help=(
     "Scan sources and create db migrations automatically. "
     "Supports autodiscovery."))
-@click.option('--auto-source', default=False, help=(
+@click.option('--auto-source', default=None, help=(
     "Set to python module path for changes autoscan (e.g. 'package.models'). "
     "Current directory will be recursively scanned by default."))
 @click.option('--database', default=None, help="Database connection")
