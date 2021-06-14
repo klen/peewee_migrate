@@ -41,23 +41,6 @@ patch:
 major:
 	make release VERSION=major
 
-# ===============
-#  Build package
-# ===============
-
-.PHONY: register
-# target: register - Register module on PyPi
-register:
-	@python setup.py register
-
-.PHONY: upload
-# target: upload - Upload module on PyPi
-upload: clean $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/python setup.py sdist bdist_wheel
-	@$(VIRTUAL_ENV)/bin/twine upload dist/*.tar.gz || true
-	@$(VIRTUAL_ENV)/bin/twine upload dist/*.whl || true
-	@$(VIRTUAL_ENV)/bin/pip install -e $(CURDIR)
-
 # =============
 #  Development
 # =============
