@@ -105,3 +105,18 @@ def test_self_referencing_foreign_key_on_model_create():
 
     code = field_to_code(Employee.manager)
     assert "model='self'" in code
+
+
+def test_self_referencing_foreign_key_on_field_added():
+    from peewee_migrate.auto import diff_one
+
+    class Employee(pw.Model):
+        name = pw.CharField()
+
+    class EmployeeNew(pw.Model):
+        name = pw.CharField()
+        manager = pw.ForeignKeyField("self")
+
+    changes = diff_one(EmployeeNew, Employee)
+    assert "migrator.add_fields" in changes[0]
+    assert "model='self'" in changes[0]
