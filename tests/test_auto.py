@@ -95,3 +95,13 @@ def test_auto_multi_column_index():
     code = model_to_code(Object)
     assert code
     assert "indexes = [(('first_name', 'last_name'), True)]" in code
+
+
+def test_self_referencing_foreign_key_on_model_create():
+    from peewee_migrate.auto import field_to_code
+
+    class Employee(pw.Model):
+        manager = pw.ForeignKeyField("self")
+
+    code = field_to_code(Employee.manager)
+    assert "model='self'" in code

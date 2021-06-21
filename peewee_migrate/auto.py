@@ -67,7 +67,11 @@ class Column(VanilaColumn):
         if isinstance(field, pw.ForeignKeyField):
             self.to_field = field.rel_field.name
             self.related_name = field.backref
-            self.rel_model = "migrator.orm['%s']" % field.rel_model._meta.table_name
+            self.rel_model = (
+                "'self'"
+                if field.rel_model == field.model
+                else "migrator.orm['%s']" % field.rel_model._meta.table_name
+            )
 
     def get_field(self, space=' '):
         # Generate the field definition for this column.
