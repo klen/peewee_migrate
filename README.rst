@@ -8,8 +8,12 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 .. _badges:
 
 .. image:: https://github.com/klen/peewee_migrate/workflows/tests/badge.svg
-    :target: https://github.com/klen/peewee_migrate/actions
+    :target: https://github.com/klen/peewee_migrate/actions/workflows/tests.yml
     :alt: Tests Status
+
+.. image:: https://github.com/klen/peewee_migrate/workflows/release.yml/badge.svg
+    :target: https://github.com/klen/peewee_migrate/actions/workflows/release.yml
+    :alt: Build Status
 
 .. image:: https://img.shields.io/pypi/v/peewee-migrate
     :target: https://pypi.org/project/peewee-migrate/
