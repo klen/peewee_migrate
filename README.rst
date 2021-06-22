@@ -11,7 +11,7 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
     :target: https://github.com/klen/peewee_migrate/actions/workflows/tests.yml
     :alt: Tests Status
 
-.. image:: https://github.com/klen/peewee_migrate/workflows/release.yml/badge.svg
+.. image:: https://github.com/klen/peewee_migrate/workflows/release/badge.svg
     :target: https://github.com/klen/peewee_migrate/actions/workflows/release.yml
     :alt: Build Status
 
