@@ -12,7 +12,6 @@ import peewee as pw
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
-from peewee_migrate.compat import string_types, exec_in
 from peewee_migrate.migrator import Migrator
 
 
@@ -252,7 +251,8 @@ class Router(BaseRouter):
         with open(os.path.join(self.migrate_dir, name + '.py'), **call_params) as f:
             code = f.read()
             scope = {}
-            exec_in(code, scope)
+            code = compile(code, '<string>', 'exec', dont_inherit=True)
+            exec(code, scope, None)
             return scope.get('migrate', VOID), scope.get('rollback', VOID)
 
     def clear(self):
@@ -269,7 +269,7 @@ class ModuleRouter(BaseRouter):
         """Initialize the router."""
         super(ModuleRouter, self).__init__(database, **kwargs)
 
-        if isinstance(migrate_module, string_types):
+        if isinstance(migrate_module, str):
             migrate_module = import_module(migrate_module)
 
         self.migrate_module = migrate_module

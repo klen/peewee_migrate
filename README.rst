@@ -8,12 +8,20 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 .. _badges:
 
 .. image:: https://github.com/klen/peewee_migrate/workflows/tests/badge.svg
-    :target: https://github.com/klen/peewee_migrate/actions
+    :target: https://github.com/klen/peewee_migrate/actions/workflows/tests.yml
     :alt: Tests Status
 
-.. image:: https://img.shields.io/pypi/v/peewee_migrate
-    :target: https://pypi.org/project/peewee_migrate/
+.. image:: https://github.com/klen/peewee_migrate/workflows/release/badge.svg
+    :target: https://github.com/klen/peewee_migrate/actions/workflows/release.yml
+    :alt: Build Status
+
+.. image:: https://img.shields.io/pypi/v/peewee-migrate
+    :target: https://pypi.org/project/peewee-migrate/
     :alt: PYPI Version
+
+.. image:: https://img.shields.io/pypi/pyversions/peewee-migrate
+    :target: https://pypi.org/project/peewee-migrate/
+    :alt: Python Versions
 
 .. _contents:
 
@@ -24,14 +32,13 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 Requirements
 =============
 
-- python 2.7,3.5
-- peewee >= 3.3.1
+- peewee >= 3.7
 
 Dependency Note
 ---------------
 
 For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``.
-For ``Python<3.8`` please use ``Peewee-Migrate==1.1.6``.
+For ``Python<3.7`` please use ``Peewee-Migrate==1.1.6``.
 
 .. _installation:
 
@@ -40,7 +47,7 @@ Installation
 
 **Peewee Migrate** should be installed using pip: ::
 
-    pip install peewee_migrate
+    pip install peewee-migrate
 
 .. _usage:
 

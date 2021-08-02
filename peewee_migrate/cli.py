@@ -1,4 +1,4 @@
-""" CLI integration. """
+"""CLI integration."""
 import os
 import re
 import sys
@@ -6,16 +6,14 @@ import sys
 import click
 from playhouse.db_url import connect
 
-from peewee_migrate.compat import string_types
-
 
 VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 CLEAN_RE = re.compile(r'\s+$', re.M)
 
 
 def get_router(directory, database, migratetable='migratehistory', verbose=0):
+    """Load and initialize a router."""
     from peewee_migrate import LOGGER
-    from peewee_migrate.compat import exec_in
     from peewee_migrate.router import Router
 
     logging_level = VERBOSE[verbose]
@@ -24,7 +22,8 @@ def get_router(directory, database, migratetable='migratehistory', verbose=0):
     ignore = schema = None
     try:
         with open(os.path.join(directory, 'conf.py')) as cfg:
-            exec_in(cfg.read(), config, config)
+            code = compile(cfg.read(), '<string>', 'exec', dont_inherit=True)
+            exec(code, config, config)
             database = config.get('DATABASE', database)
             ignore = config.get('IGNORE', ignore)
             schema = config.get('SCHEMA', schema)
@@ -33,7 +32,7 @@ def get_router(directory, database, migratetable='migratehistory', verbose=0):
     except IOError:
         pass
 
-    if isinstance(database, string_types):
+    if isinstance(database, str):
         database = connect(database)
 
     LOGGER.setLevel(logging_level)
@@ -48,6 +47,7 @@ def get_router(directory, database, migratetable='migratehistory', verbose=0):
 
 @click.group()
 def cli():
+    """Just a group."""
     pass
 
 
@@ -71,7 +71,7 @@ def migrate(name=None, database=None, directory=None, verbose=None, migratetable
 @click.option('--auto', default=False, is_flag=True, help=(
     "Scan sources and create db migrations automatically. "
     "Supports autodiscovery."))
-@click.option('--auto-source', default=False, help=(
+@click.option('--auto-source', default=None, help=(
     "Set to python module path for changes autoscan (e.g. 'package.models'). "
     "Current directory will be recursively scanned by default."))
 @click.option('--database', default=None, help="Database connection")
@@ -89,20 +89,20 @@ def create(name, database=None, auto=False, auto_source=False, directory=None, m
 @cli.command()
 @click.argument('name', required=False)
 @click.option('--count',
-              required=False, 
-              default=1, 
-              type=int, 
+              required=False,
+              default=1,
+              type=int,
               help="Number of last migrations to be rolled back."
                    "Ignored in case of non-empty name")
 @click.option('--database', default=None, help="Database connection")
-@click.option('--directory', 
-              default='migrations', 
+@click.option('--directory',
+              default='migrations',
               help="Directory where migrations are stored")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
 def rollback(name, count, database=None, directory=None, migratetable=None, verbose=None):
     """
-    Rollback a migration with given name or number of last migrations 
+    Rollback a migration with given name or number of last migrations
     with given --count option as integer number
     """
     router = get_router(directory, database, migratetable, verbose)
@@ -117,7 +117,7 @@ def rollback(name, count, database=None, directory=None, migratetable=None, verb
             router.rollback(name)
     else:
         router.rollback(name)
-        
+
 
 @cli.command()
 @click.option('--database', default=None, help="Database connection")
