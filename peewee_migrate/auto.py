@@ -1,3 +1,7 @@
+"""Automatically create migrations."""
+
+import typing as t
+
 from collections import OrderedDict
 from collections.abc import Hashable
 
@@ -18,21 +22,24 @@ FIELD_MODULES_MAP = {
 }
 
 
-def fk_to_params(field: pw.ForeignKeyField):
+def fk_to_params(field: pw.ForeignKeyField) -> t.Dict:
     """Get params from the given fk."""
     params = {}
     if field.on_delete is not None:
-        params['on_delete'] = "'%s'" % field.on_delete
+        params['on_delete'] = f"'{field.on_delete}'"
+
     if field.on_update is not None:
-        params['on_update'] = "'%s'" % field.on_update
+        params['on_update'] = "'{field.on_update}'"
+
     return params
 
 
-def dtf_to_params(field: pw.DateTimeField):
+def dtf_to_params(field: pw.DateTimeField) -> t.Dict:
     """Get params from the given datetime field."""
     params = {}
     if not isinstance(field.formats, list):
         params['formats'] = field.formats
+
     return params
 
 
@@ -47,8 +54,9 @@ FIELD_TO_PARAMS = {
 
 
 class Column(VanilaColumn):
+    """Get field's migration parameters."""
 
-    def __init__(self, field, migrator=None):  # noqa
+    def __init__(self, field: pw.Field, **kwargs):  # noqa
         super(Column, self).__init__(
             field.name, type(field), field.field_type, field.null,
             primary_key=field.primary_key, column_name=field.column_name, index=field.index,
@@ -73,22 +81,23 @@ class Column(VanilaColumn):
                 else "migrator.orm['%s']" % field.rel_model._meta.table_name
             )
 
-    def get_field(self, space=' '):
-        # Generate the field definition for this column.
+    def get_field(self, space: str = ' ') -> str:
+        """Generate the field definition for this column."""
         field = super(Column, self).get_field()
         module = FIELD_MODULES_MAP.get(self.field_class.__name__, 'pw')
         name, _, field = [s and s.strip() for s in field.partition('=')]
         return '{name}{space}={space}{module}.{field}'.format(
             name=name, field=field, space=space, module=module)
 
-    def get_field_parameters(self):
+    def get_field_parameters(self) -> t.Dict:
+        """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
             params['default'] = self.default
         return params
 
 
-def diff_one(model1, model2, **kwargs):
+def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
     """Find difference between given peewee models."""
     changes = []
 
@@ -172,7 +181,8 @@ def diff_many(models1, models2, migrator=None, reverse=False):
     return changes
 
 
-def model_to_code(Model, **kwargs):
+def model_to_code(Model: pw.Model, **kwargs) -> str:
+    """Generate migrations for the given model."""
     template = """class {classname}(pw.Model):
 {fields}
 
@@ -194,15 +204,18 @@ def model_to_code(Model, **kwargs):
     return template.format(classname=Model.__name__, fields=fields, meta=meta)
 
 
-def create_model(Model, **kwargs):
+def create_model(Model: pw.Model, **kwargs) -> str:
+    """Generate migrations to create model."""
     return '@migrator.create_model\n' + model_to_code(Model, **kwargs)
 
 
-def remove_model(Model, **kwargs):
+def remove_model(Model: pw.Model, **kwargs) -> str:
+    """Generate migrations to remove model."""
     return "migrator.remove_model('%s')" % Model._meta.table_name
 
 
-def create_fields(Model, *fields, **kwargs):
+def create_fields(Model: pw.Model, *fields: pw.Field, **kwargs) -> str:
+    """Generate migrations to add fields."""
     return "migrator.add_fields(%s'%s', %s)" % (
         NEWLINE,
         Model._meta.table_name,
@@ -210,18 +223,21 @@ def create_fields(Model, *fields, **kwargs):
     )
 
 
-def drop_fields(Model, *fields, **kwargs):
+def drop_fields(Model: pw.Model, *fields: pw.Field, **kwargs) -> str:
+    """Generate migrations to remove fields."""
     return "migrator.remove_fields('%s', %s)" % (
         Model._meta.table_name, ', '.join(map(repr, fields))
     )
 
 
-def field_to_code(field, space=True, **kwargs):
+def field_to_code(field: pw.Field, space: bool = True, **kwargs) -> str:
+    """Generate field description."""
     col = Column(field, **kwargs)
     return col.get_field(' ' if space else '')
 
 
-def compare_fields(field1, field2, **kwargs):
+def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> t.Dict:
+    """Find diffs between the given fields."""
     field_cls1, field_cls2 = type(field1), type(field2)
     if field_cls1 != field_cls2:  # noqa
         return {'cls': True}
@@ -234,7 +250,8 @@ def compare_fields(field1, field2, **kwargs):
     return dict(set(params1.items()) - set(params2.items()))
 
 
-def field_to_params(field, **kwargs):
+def field_to_params(field: pw.Field, **kwargs) -> t.Dict:
+    """Generate params for the given field."""
     params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
     if field.default is not None and \
             not callable(field.default) and isinstance(field.default, Hashable):
@@ -246,23 +263,27 @@ def field_to_params(field, **kwargs):
     return params
 
 
-def change_fields(Model, *fields, **kwargs):
+def change_fields(Model: pw.Model, *fields: pw.Field, **kwargs) -> str:
+    """Generate migrations to change fields."""
     return "migrator.change_fields('%s', %s)" % (
         Model._meta.table_name, (',' + NEWLINE).join([field_to_code(f, False) for f in fields])
     )
 
 
-def change_not_null(Model, name, null):
+def change_not_null(Model: pw.Model, name: str, null: bool) -> str:
+    """Generate migrations."""
     operation = 'drop_not_null' if null else 'add_not_null'
     return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))
 
 
-def add_index(Model, name, unique):
+def add_index(Model: pw.Model, name: str, unique: bool) -> str:
+    """Generate migrations."""
     operation = 'add_index'
     return "migrator.%s('%s', %s, unique=%s)" %\
         (operation, Model._meta.table_name, repr(name), unique)
 
 
-def drop_index(Model, name):
+def drop_index(Model: pw.Model, name: str) -> str:
+    """Generate migrations."""
     operation = 'drop_index'
     return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))

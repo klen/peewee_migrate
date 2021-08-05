@@ -15,8 +15,9 @@ from peewee_migrate.auto import diff_many, NEWLINE
 from peewee_migrate.migrator import Migrator
 
 
+# Support py37
 try:
-    from functools import cached_property
+    from functools import cached_property  # type: ignore
 except ImportError:
     from cached_property import cached_property
 
@@ -31,7 +32,6 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt
 
 
 class BaseRouter(object):
-
     """Abstract base class for router."""
 
     def __init__(self, database, migrate_table='migratehistory', ignore=None,
