@@ -19,7 +19,7 @@ from peewee_migrate.migrator import Migrator
 try:
     from functools import cached_property  # type: ignore
 except ImportError:
-    from cached_property import cached_property
+    from cached_property import cached_property  # type: ignore
 
 
 CLEAN_RE = re.compile(r'\s+$', re.M)
