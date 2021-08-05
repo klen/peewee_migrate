@@ -50,6 +50,7 @@ def test_auto():
         dob = pw.DateField(null=True)
         birthday = pw.DateField(default=dt.datetime.now)
         email = pw.CharField(index=True, unique=True)
+        is_deleted = pw.BooleanField(default=False)
 
     changes = diff_one(Person_, Person, migrator=migrator)
     assert not changes
@@ -120,3 +121,11 @@ def test_self_referencing_foreign_key_on_field_added():
     changes = diff_one(EmployeeNew, Employee)
     assert "migrator.add_fields" in changes[0]
     assert "model='self'" in changes[0]
+
+
+def test_column_default():
+    from peewee_migrate.auto import field_to_code
+    from .models import Person
+
+    code = field_to_code(Person.is_deleted)
+    assert code == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'  # noqa

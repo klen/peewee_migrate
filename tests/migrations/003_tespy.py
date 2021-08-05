@@ -27,7 +27,9 @@ def migrate(migrator, database, **kwargs):
 
     """
     migrator.rename_field('tag', 'created_at', 'updated_at')
+    migrator.add_fields('person', is_deleted=pw.BooleanField(default=False))
 
 
 def rollback(migrator, database, **kwargs):
     migrator.rename_field('tag', 'updated_at', 'created_at')
+    migrator.remove_fields('person', 'is_deleted')

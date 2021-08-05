@@ -81,6 +81,12 @@ class Column(VanilaColumn):
         return '{name}{space}={space}{module}.{field}'.format(
             name=name, field=field, space=space, module=module)
 
+    def get_field_parameters(self):
+        params = super(Column, self).get_field_parameters()
+        if self.default is not None:
+            params['default'] = self.default
+        return params
+
 
 def diff_one(model1, model2, **kwargs):
     """Find difference between given peewee models."""
