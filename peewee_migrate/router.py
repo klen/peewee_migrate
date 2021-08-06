@@ -1,5 +1,7 @@
 """Migration router."""
 
+import typing as t
+
 import os
 import pkgutil
 import re
@@ -7,12 +9,16 @@ import sys
 from importlib import import_module
 from types import ModuleType
 from unittest import mock
+from pathlib import Path
+from logging import Logger
 
 import peewee as pw
 
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import diff_many, NEWLINE
 from peewee_migrate.migrator import Migrator
+
+from . import MIGRATE_TABLE
 
 
 # Support py37
@@ -22,20 +28,19 @@ except ImportError:
     from cached_property import cached_property  # type: ignore
 
 
-CLEAN_RE = re.compile(r'\s+$', re.M)
-CURDIR = os.getcwd()
-DEFAULT_MIGRATE_DIR = os.path.join(CURDIR, 'migrations')
-UNDEFINED = object()
-VOID = lambda m, d: None # noqa
-with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'template.txt')) as t:
-    MIGRATE_TEMPLATE = t.read()
+CLEAN_RE: t.Pattern = re.compile(r'\s+$', re.M)
+CURDIR: Path = Path.cwd()
+DEFAULT_MIGRATE_DIR: Path = CURDIR / 'migrations'
+VOID: t.Callable = lambda m, d: None # noqa
+with open(Path(__file__).parent / 'template.txt') as fp:
+    MIGRATE_TEMPLATE: str = fp.read()
 
 
 class BaseRouter(object):
     """Abstract base class for router."""
 
-    def __init__(self, database, migrate_table='migratehistory', ignore=None,
-                 schema=None, logger=LOGGER):
+    def __init__(self, database: t.Union[pw.Database, pw.Proxy], migrate_table=MIGRATE_TABLE,
+                 ignore: t.List[str] = None, schema: str = None, logger: Logger = LOGGER):
         """Initialize the router."""
         self.database = database
         self.migrate_table = migrate_table
@@ -46,7 +51,7 @@ class BaseRouter(object):
             raise RuntimeError('Invalid database: %s' % database)
 
     @cached_property
-    def model(self):
+    def model(self) -> pw.Model:
         """Initialize and cache MigrationHistory model."""
         MigrateHistory._meta.database = self.database
         MigrateHistory._meta.table_name = self.migrate_table
@@ -55,30 +60,30 @@ class BaseRouter(object):
         return MigrateHistory
 
     @property
-    def todo(self):
+    def todo(self) -> t.List[str]:
         """Get migrations to run."""
         raise NotImplementedError
 
     @property
-    def done(self):
+    def done(self) -> t.List[str]:
         """Scan migrations in database."""
         return [mm.name for mm in self.model.select().order_by(self.model.id)]
 
     @property
-    def diff(self):
+    def diff(self) -> t.List[str]:
         """Calculate difference between fs and db."""
         done = set(self.done)
         return [name for name in self.todo if name not in done]
 
     @cached_property
-    def migrator(self):
+    def migrator(self) -> Migrator:
         """Create migrator and setup it with fake migrations."""
         migrator = Migrator(self.database)
         for name in self.done:
             self.run_one(name, migrator)
         return migrator
 
-    def create(self, name='auto', auto=False):
+    def create(self, name: str = 'auto', auto: t.Any = False) -> t.Optional[str]:
         """Create a migration.
 
         :param auto: Python module path to scan for models.
@@ -86,18 +91,20 @@ class BaseRouter(object):
         migrate = rollback = ''
         if auto:
             # Need to append the CURDIR to the path for import to work.
-            sys.path.append(CURDIR)
+            sys.path.append(f"{ CURDIR }")
             models = auto if isinstance(auto, list) else [auto]
             if not all([_check_model(m) for m in models]):
                 try:
                     modules = models
                     if isinstance(auto, bool):
-                        modules = [m for _, m, ispkg in pkgutil.iter_modules([CURDIR]) if ispkg]
+                        modules = [
+                            m for _, m, ispkg in pkgutil.iter_modules([f"{CURDIR}"]) if ispkg]
                     models = [m for module in modules for m in load_models(module)]
 
                 except ImportError as exc:
                     self.logger.exception(exc)
-                    return self.logger.error("Can't import models module: %s", auto)
+                    self.logger.error("Can't import models module: %s", auto)
+                    return None
 
             if self.ignore:
                 models = [m for m in models if m._meta.name not in self.ignore]
@@ -107,7 +114,8 @@ class BaseRouter(object):
 
             migrate = compile_migrations(self.migrator, models)
             if not migrate:
-                return self.logger.warning('No changes found.')
+                self.logger.warning('No changes found.')
+                return None
 
             rollback = compile_migrations(self.migrator, models, reverse=True)
 
@@ -116,7 +124,7 @@ class BaseRouter(object):
         self.logger.info('Migration has been created as "%s"', name)
         return name
 
-    def merge(self, name='initial'):
+    def merge(self, name: str = 'initial'):
         """Merge migrations into one."""
         migrator = Migrator(self.database)
         migrate = compile_migrations(migrator, self.migrator.orm.values())
@@ -137,13 +145,16 @@ class BaseRouter(object):
         """Clear migrations."""
         self.model.delete().execute()
 
-    def compile(self, name, migrate='', rollback='', num=None):
+    def compile(self, name: str, migrate: str = '', rollback: str = '', num: int = None):
+        """Create a migration."""
         raise NotImplementedError
 
-    def read(self, name):
+    def read(self, name: str):
+        """Read migration from file."""
         raise NotImplementedError
 
-    def run_one(self, name, migrator, fake=True, downgrade=False, force=False):
+    def run_one(self, name: str, migrator: Migrator, fake: bool = True,
+                downgrade: bool = False, force: bool = False) -> str:
         """Run/emulate a migration with given name."""
         try:
             migrate, rollback = self.read(name)
@@ -159,7 +170,7 @@ class BaseRouter(object):
                     self.logger.info('Done %s', name)
 
                 migrator.clean()
-                return migrator
+                return name
 
             with self.database.transaction():
                 if not downgrade:
@@ -174,6 +185,7 @@ class BaseRouter(object):
                     self.model.delete().where(self.model.name == name).execute()
 
                 self.logger.info('Done %s', name)
+                return name
 
         except Exception:
             self.database.rollback()
@@ -181,11 +193,11 @@ class BaseRouter(object):
             self.logger.exception('%s failed: %s', operation, name)
             raise
 
-    def run(self, name=None, fake=False):
+    def run(self, name: str = None, fake: bool = False) -> t.List[str]:
         """Run migrations."""
         self.logger.info('Starting migrations')
 
-        done = []
+        done: t.List[str] = []
         diff = self.diff
         if not diff:
             self.logger.info('There is nothing to migrate')
@@ -193,18 +205,19 @@ class BaseRouter(object):
 
         migrator = self.migrator
         for mname in diff:
-            self.run_one(mname, migrator, fake=fake, force=fake)
-            done.append(mname)
+            done.append(self.run_one(mname, migrator, fake=fake, force=fake))
             if name and name == mname:
                 break
 
         return done
 
-    def rollback(self, name):
+    def rollback(self, name: str):
+        """Rollback migrations."""
         name = name.strip()
         done = self.done
         if not done:
             raise RuntimeError('No migrations are found.')
+
         if name != done[-1]:
             raise RuntimeError('Only last migration can be canceled.')
 
@@ -214,10 +227,12 @@ class BaseRouter(object):
 
 
 class Router(BaseRouter):
+    """File system router."""
 
     filemask = re.compile(r"[\d]{3}_[^\.]+\.py$")
 
     def __init__(self, database, migrate_dir=DEFAULT_MIGRATE_DIR, **kwargs):
+        """Initialize the router."""
         super(Router, self).__init__(database, **kwargs)
         self.migrate_dir = migrate_dir
 
@@ -264,6 +279,7 @@ class Router(BaseRouter):
 
 
 class ModuleRouter(BaseRouter):
+    """Module based router."""
 
     def __init__(self, database, migrate_module='migrations', **kwargs):
         """Initialize the router."""
@@ -292,8 +308,8 @@ def load_models(module):
     )}
 
 
-def _import_submodules(package, passed=UNDEFINED):
-    if passed is UNDEFINED:
+def _import_submodules(package, passed=...):
+    if passed is ...:
         passed = set()
 
     if isinstance(package, str):

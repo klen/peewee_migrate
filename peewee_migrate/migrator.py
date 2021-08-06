@@ -1,44 +1,52 @@
-import peewee as pw
+"""Run migrations."""
+
+import typing as t
+
 from functools import wraps
+
+import peewee as pw
 from playhouse.migrate import (
     MySQLMigrator as MqM,
     PostgresqlMigrator as PgM,
     SchemaMigrator as ScM,
     SqliteMigrator as SqM,
     Operation, SQL, PostgresqlDatabase, operation, SqliteDatabase, MySQLDatabase,
-    make_index_name
+    make_index_name, Context
 )
 
 from peewee_migrate import LOGGER
 
 
 class SchemaMigrator(ScM):
-
     """Implement migrations."""
 
     @classmethod
-    def from_database(cls, database):
+    def from_database(cls, database: pw.Database) -> ScM:
         """Initialize migrator by db."""
         if isinstance(database, PostgresqlDatabase):
             return PostgresqlMigrator(database)
+
         if isinstance(database, SqliteDatabase):
             return SqliteMigrator(database)
+
         if isinstance(database, MySQLDatabase):
             return MySQLMigrator(database)
+
         return super(SchemaMigrator, cls).from_database(database)
 
-    def drop_table(self, model, cascade=True):
+    def drop_table(self, model: pw.Model, cascade: bool = True) -> t.Callable:
+        """Drop table."""
         return lambda: model.drop_table(cascade=cascade)
 
     @operation
-    def change_column(self, table, column_name, field):
+    def change_column(self, table: str, column_name: str, field: pw.Field) -> t.List[Operation]:
         """Change column."""
         operations = [self.alter_change_column(table, column_name, field)]
         if not field.null:
             operations.extend([self.add_not_null(table, column_name)])
         return operations
 
-    def alter_change_column(self, table, column, field):
+    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Context:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
@@ -47,11 +55,12 @@ class SchemaMigrator(ScM):
         return ctx
 
     @operation
-    def sql(self, sql, *params):
+    def sql(self, sql: str, *params) -> SQL:
         """Execute raw SQL."""
         return SQL(sql, *params)
 
-    def alter_add_column(self, table, column_name, field, **kwargs):
+    def alter_add_column(
+            self, table: str, column_name: str, field: pw.Field, **kwargs) -> Operation:
         """Fix fieldname for ForeignKeys."""
         name = field.name
         op = super(SchemaMigrator, self).alter_add_column(table, column_name, field, **kwargs)
@@ -61,8 +70,9 @@ class SchemaMigrator(ScM):
 
 
 class MySQLMigrator(SchemaMigrator, MqM):
+    """Support MySQL."""
 
-    def alter_change_column(self, table, column, field):
+    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Context:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
@@ -72,10 +82,9 @@ class MySQLMigrator(SchemaMigrator, MqM):
 
 
 class PostgresqlMigrator(SchemaMigrator, PgM):
-
     """Support the migrations in postgresql."""
 
-    def alter_change_column(self, table, column_name, field):
+    def alter_change_column(self, table: str, column_name: str, field: pw.Field) -> Context:
         """Support change columns."""
         context = super(PostgresqlMigrator, self).alter_change_column(table, column_name, field)
         context._sql.insert(-1, 'TYPE')
@@ -84,14 +93,13 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 
 
 class SqliteMigrator(SchemaMigrator, SqM):
-
     """Support the migrations in sqlite."""
 
-    def drop_table(self, model, cascade=True):
-        """SQLite doesnt support cascade syntax by default."""
+    def drop_table(self, model: pw.Model, cascade: bool = True) -> t.Callable:
+        """Sqlite doesnt support cascade syntax by default."""
         return lambda: model.drop_table(cascade=False)
 
-    def alter_change_column(self, table, column, field):
+    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Operation:
         """Support change columns."""
         return self._update_column(table, column, lambda a, b: b)
 
@@ -108,17 +116,16 @@ def get_model(method):
 
 
 class Migrator(object):
-
     """Provide migrations."""
 
-    def __init__(self, database):
+    def __init__(self, database: t.Union[pw.Database, pw.Proxy]):
         """Initialize the migrator."""
         if isinstance(database, pw.Proxy):
             database = database.obj
 
         self.database = database
-        self.orm = dict()
-        self.ops = list()
+        self.orm: t.Dict[str, pw.Model] = {}
+        self.ops: t.List[Operation] = []
         self.migrator = SchemaMigrator.from_database(self.database)
 
     def run(self):
@@ -131,11 +138,11 @@ class Migrator(object):
                 op()
         self.clean()
 
-    def python(self, func, *args, **kwargs):
+    def python(self, func: t.Callable, *args, **kwargs):
         """Run python code."""
         self.ops.append(lambda: func(*args, **kwargs))
 
-    def sql(self, sql, *params):
+    def sql(self, sql: str, *params):
         """Execure raw SQL."""
         self.ops.append(self.migrator.sql(sql, *params))
 
@@ -143,7 +150,7 @@ class Migrator(object):
         """Clean the operations."""
         self.ops = list()
 
-    def create_table(self, model):
+    def create_table(self, model: pw.Model) -> pw.Model:
         """Create model and table in database.
 
         >> migrator.create_table(model)
@@ -156,7 +163,7 @@ class Migrator(object):
     create_model = create_table
 
     @get_model
-    def drop_table(self, model, cascade=True):
+    def drop_table(self, model: pw.Model, cascade: bool = True):
         """Drop model and table from database.
 
         >> migrator.drop_table(model, cascade=True)
@@ -167,7 +174,7 @@ class Migrator(object):
     remove_model = drop_table
 
     @get_model
-    def add_columns(self, model, **fields):
+    def add_columns(self, model: pw.Model, **fields: pw.Field) -> pw.Model:
         """Create new fields."""
         for name, field in fields.items():
             model._meta.add_field(name, field)
@@ -181,7 +188,7 @@ class Migrator(object):
     add_fields = add_columns
 
     @get_model
-    def change_columns(self, model, **fields):
+    def change_columns(self, model: pw.Model, **fields: pw.Field) -> pw.Model:
         """Change fields."""
         for name, field in fields.items():
             old_field = model._meta.fields.get(name, field)
@@ -227,7 +234,7 @@ class Migrator(object):
     change_fields = change_columns
 
     @get_model
-    def drop_columns(self, model, *names, **kwargs):
+    def drop_columns(self, model: pw.Model, *names: str, **kwargs) -> pw.Model:
         """Remove fields from model."""
         fields = [field for field in model._meta.fields.values() if field.name in names]
         cascade = kwargs.pop('cascade', True)
@@ -243,7 +250,7 @@ class Migrator(object):
 
     remove_fields = drop_columns
 
-    def __del_field__(self, model, field):
+    def __del_field__(self, model: pw.Model, field: pw.Field):
         """Delete field from model."""
         model._meta.remove_field(field.name)
         delattr(model, field.name)
@@ -255,7 +262,7 @@ class Migrator(object):
             delattr(field.rel_model, field.backref)
 
     @get_model
-    def rename_column(self, model, old_name, new_name):
+    def rename_column(self, model: pw.Model, old_name: str, new_name: str) -> pw.Model:
         """Rename field in model."""
         field = model._meta.fields[old_name]
         if isinstance(field, pw.ForeignKeyField):
@@ -271,7 +278,7 @@ class Migrator(object):
     rename_field = rename_column
 
     @get_model
-    def rename_table(self, model, new_name):
+    def rename_table(self, model: pw.Model, new_name: str) -> pw.Model:
         """Rename table in database."""
         old_name = model._meta.table_name
         del self.orm[model._meta.table_name]
@@ -281,7 +288,7 @@ class Migrator(object):
         return model
 
     @get_model
-    def add_index(self, model, *columns, **kwargs):
+    def add_index(self, model: pw.Model, *columns: str, **kwargs) -> pw.Model:
         """Create indexes."""
         unique = kwargs.pop('unique', False)
         model._meta.indexes.append((columns, unique))
@@ -301,7 +308,7 @@ class Migrator(object):
         return model
 
     @get_model
-    def drop_index(self, model, *columns):
+    def drop_index(self, model: pw.Model, *columns: str) -> pw.Model:
         """Drop indexes."""
         columns_ = []
         for col in columns:
@@ -321,7 +328,7 @@ class Migrator(object):
         return model
 
     @get_model
-    def add_not_null(self, model, *names):
+    def add_not_null(self, model: pw.Model, *names: str) -> pw.Model:
         """Add not null."""
         for name in names:
             field = model._meta.fields[name]
@@ -330,7 +337,7 @@ class Migrator(object):
         return model
 
     @get_model
-    def drop_not_null(self, model, *names):
+    def drop_not_null(self, model: pw.Model, *names: str) -> pw.Model:
         """Drop not null."""
         for name in names:
             field = model._meta.fields[name]
@@ -339,7 +346,7 @@ class Migrator(object):
         return model
 
     @get_model
-    def add_default(self, model, name, default):
+    def add_default(self, model: pw.Model, name: str, default: t.Any) -> pw.Model:
         """Add default."""
         field = model._meta.fields[name]
         model._meta.defaults[field] = field.default = default

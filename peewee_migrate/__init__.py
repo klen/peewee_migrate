@@ -15,7 +15,7 @@ __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER: logging.Logger = logging.getLogger(__name__)
 LOGGER.addHandler(logging.StreamHandler())
 LOGGER.setLevel(logging.INFO)
 
@@ -29,5 +29,9 @@ class MigrateHistory(pw.Model):
     def __unicode__(self) -> str:
         """String representation."""
         return self.name
+
+
+MIGRATE_TABLE = 'migratehistory'
+
 
 from .router import Migrator, Router # noqa

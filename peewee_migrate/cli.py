@@ -1,4 +1,6 @@
 """CLI integration."""
+import typing as t
+
 import os
 import re
 import sys
@@ -6,39 +8,45 @@ import sys
 import click
 from playhouse.db_url import connect
 
+from . import LOGGER, MIGRATE_TABLE
+from .router import Router
 
-VERBOSE = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
-CLEAN_RE = re.compile(r'\s+$', re.M)
+
+CLEAN_RE: t.Pattern = re.compile(r'\s+$', re.M)
+VERBOSE: t.List[str] = ['WARNING', 'INFO', 'DEBUG', 'NOTSET']
 
 
-def get_router(directory, database, migratetable='migratehistory', verbose=0):
+def get_router(directory: str = None, database: str = None,
+               migratetable: str = MIGRATE_TABLE, verbose: int = 0) -> Router:
     """Load and initialize a router."""
-    from peewee_migrate import LOGGER
-    from peewee_migrate.router import Router
-
-    logging_level = VERBOSE[verbose]
-    config = {}
-    migrate_table = migratetable
+    config: t.Dict = {}
+    logging_level: str = VERBOSE[verbose]
     ignore = schema = None
-    try:
-        with open(os.path.join(directory, 'conf.py')) as cfg:
-            code = compile(cfg.read(), '<string>', 'exec', dont_inherit=True)
-            exec(code, config, config)
-            database = config.get('DATABASE', database)
-            ignore = config.get('IGNORE', ignore)
-            schema = config.get('SCHEMA', schema)
-            migrate_table = config.get('MIGRATE_TABLE', migrate_table)
-            logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
-    except IOError:
-        pass
+
+    if directory:
+        try:
+            with open(os.path.join(directory, 'conf.py')) as cfg:
+                code = compile(cfg.read(), '<string>', 'exec', dont_inherit=True)
+                exec(code, config, config)
+                database = config.get('DATABASE', database)
+                ignore = config.get('IGNORE', ignore)
+                schema = config.get('SCHEMA', schema)
+                migratetable = config.get('MIGRATE_TABLE', migratetable)
+                logging_level = config.get('LOGGING_LEVEL', logging_level).upper()
+        except IOError:
+            pass
 
     if isinstance(database, str):
         database = connect(database)
 
     LOGGER.setLevel(logging_level)
 
+    if not database:
+        LOGGER.error("Database is undefined")
+        return sys.exit(1)
+
     try:
-        return Router(database, migrate_table=migrate_table, migrate_dir=directory,
+        return Router(database, migrate_table=migratetable, migrate_dir=directory,
                       ignore=ignore, schema=schema)
     except RuntimeError as exc:
         LOGGER.error(exc)
@@ -58,7 +66,8 @@ def cli():
 @click.option('--fake', is_flag=True, default=False, help="Run migration as fake.")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
-def migrate(name=None, database=None, directory=None, verbose=None, migratetable=None, fake=False):
+def migrate(name: str = None, database: str = None, directory: str = None,
+            migratetable: str = MIGRATE_TABLE, verbose: int = 0, fake: bool = False):
     """Migrate database."""
     router = get_router(directory, database, migratetable, verbose)
     migrations = router.run(name, fake=fake)
@@ -78,34 +87,27 @@ def migrate(name=None, database=None, directory=None, verbose=None, migratetable
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
-def create(name, database=None, auto=False, auto_source=False, directory=None, migratetable=None, verbose=None):
+def create(name: str = None, database: str = None, directory: str = None,
+           migratetable: str = MIGRATE_TABLE, verbose: int = 0,
+           auto: bool = False, auto_source: str = None):
     """Create a migration."""
-    router = get_router(directory, database, migratetable, verbose)
-    if auto and auto_source:
-        auto = auto_source
-    router.create(name, auto=auto)
+    router: Router = get_router(directory, database, migratetable, verbose)
+    router.create(name or 'auto', auto=auto_source if auto and auto_source else auto)
 
 
 @cli.command()
 @click.argument('name', required=False)
-@click.option('--count',
-              required=False,
-              default=1,
-              type=int,
+@click.option('--count', required=False, default=1, type=int,
               help="Number of last migrations to be rolled back."
                    "Ignored in case of non-empty name")
 @click.option('--database', default=None, help="Database connection")
-@click.option('--directory',
-              default='migrations',
-              help="Directory where migrations are stored")
+@click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
-def rollback(name, count, database=None, directory=None, migratetable=None, verbose=None):
-    """
-    Rollback a migration with given name or number of last migrations
-    with given --count option as integer number
-    """
-    router = get_router(directory, database, migratetable, verbose)
+def rollback(name: str = None, database: str = None, directory: str = None,
+             migratetable: str = MIGRATE_TABLE, verbose: int = 0, count: int = 1):
+    """Rollback a migration with given name or number of last migrations with given --count option as integer number"""  # noqa
+    router: Router = get_router(directory, database, migratetable, verbose)
     if not name:
         if len(router.done) < count:
             raise RuntimeError(
@@ -124,9 +126,10 @@ def rollback(name, count, database=None, directory=None, migratetable=None, verb
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
-def list(database=None, directory=None, migratetable=None, verbose=None):
+def list(database: str = None, directory: str = None,
+         migratetable: str = MIGRATE_TABLE, verbose: int = 0):
     """List migrations."""
-    router = get_router(directory, database, migratetable, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     click.echo('Migrations are done:')
     click.echo('\n'.join(router.done))
     click.echo('')
@@ -139,7 +142,8 @@ def list(database=None, directory=None, migratetable=None, verbose=None):
 @click.option('--directory', default='migrations', help="Directory where migrations are stored")
 @click.option('--migratetable', default="migratehistory", help="Migration table.")
 @click.option('-v', '--verbose', count=True)
-def merge(database=None, directory=None, migratetable=None, verbose=None):
+def merge(database: str = None, directory: str = None,
+          migratetable: str = MIGRATE_TABLE, verbose: int = 0):
     """Merge migrations into one."""
-    router = get_router(directory, database, migratetable, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     router.merge()
