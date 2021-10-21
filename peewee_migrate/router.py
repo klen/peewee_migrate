@@ -315,6 +315,10 @@ def _import_submodules(package, passed=...):
     if isinstance(package, str):
         package = import_module(package)
 
+    # https://github.com/klen/peewee_migrate/issues/125
+    if not hasattr(package, '__path__'):
+        return {package}
+
     modules = []
     if set(package.__path__) & passed:
         return modules
