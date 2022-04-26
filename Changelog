@@ -1,4 +1,8 @@
-2021-10-20  klen (unreleased)
+2022-04-26  klen
+
+        * Fix code generation for FK.on_update
+
+2021-10-20  klen
 
 	* Support python 3.10
 
