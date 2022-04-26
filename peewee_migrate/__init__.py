@@ -34,4 +34,7 @@ class MigrateHistory(pw.Model):
 MIGRATE_TABLE = 'migratehistory'
 
 
-from .router import Migrator, Router # noqa
+from .router import Migrator, Router
+
+
+__all__ = 'Migrator', 'Router'

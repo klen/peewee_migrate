@@ -1,24 +1,23 @@
-import os.path as path
 import datetime as dt
+import os.path as path
 
 import peewee as pw
-from playhouse.postgres_ext import (ArrayField, BinaryJSONField, DateTimeTZField,
-                                    HStoreField, IntervalField, JSONField,
-                                    TSVectorField)
+from playhouse.postgres_ext import (ArrayField, BinaryJSONField, DateTimeTZField, HStoreField,
+                                    IntervalField, JSONField, TSVectorField)
 
 CURDIR = path.abspath(path.dirname(__file__))
 
 
 def test_auto():
-    from peewee_migrate.auto import diff_one, diff_many, model_to_code
+    from peewee_migrate.auto import diff_many, diff_one, model_to_code
     from peewee_migrate.cli import get_router
 
-    router = get_router(path.join(CURDIR, 'migrations'), 'sqlite:///:memory:')
+    router = get_router(path.join(CURDIR, "migrations"), "sqlite:///:memory:")
     router.run()
     migrator = router.migrator
     models = migrator.orm.values()
-    Person_ = migrator.orm['person']
-    Tag_ = migrator.orm['tag']
+    Person_ = migrator.orm["person"]
+    Tag_ = migrator.orm["tag"]
 
     code = model_to_code(Person_)
     assert code
@@ -30,7 +29,7 @@ def test_auto():
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True, unique=True)
-        tag = pw.ForeignKeyField(Tag_, on_delete='CASCADE', backref='persons')
+        tag = pw.ForeignKeyField(Tag_, on_delete="CASCADE", backref="persons")
         email = pw.CharField(index=True, unique=True)
 
     changes = diff_one(Person, Person_, migrator=migrator)
@@ -41,8 +40,8 @@ def test_auto():
     assert changes[-2] == "migrator.drop_index('person', 'last_name')"
     assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
 
-    migrator.drop_index('person', 'email')
-    migrator.add_index('person', 'email', unique=True)
+    migrator.drop_index("person", "email")
+    migrator.add_index("person", "email", unique=True)
 
     class Person(pw.Model):
         first_name = pw.CharField(unique=True)
@@ -57,7 +56,7 @@ def test_auto():
 
     class Color(pw.Model):
         id = pw.AutoField()
-        name = pw.CharField(default='red')
+        name = pw.CharField(default="red")
 
     code = model_to_code(Color)
     assert "DEFAULT 'red'" in code
@@ -89,9 +88,7 @@ def test_auto_multi_column_index():
         last_name = pw.CharField()
 
         class Meta:
-            indexes = (
-                (('first_name', 'last_name'), True),
-            )
+            indexes = ((("first_name", "last_name"), True),)
 
     code = model_to_code(Object)
     assert code
@@ -125,7 +122,22 @@ def test_self_referencing_foreign_key_on_field_added():
 
 def test_column_default():
     from peewee_migrate.auto import field_to_code
+
     from .models import Person
 
     code = field_to_code(Person.is_deleted)
-    assert code == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'  # noqa
+    assert (
+        code
+        == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'
+    )  # noqa
+
+
+def test_on_update_on_delete():
+    from peewee_migrate.auto import field_to_code
+
+    class Employee(pw.Model):
+        manager = pw.ForeignKeyField("self", on_update="CASCADE", on_delete="CASCADE")
+
+    code = field_to_code(Employee.manager)
+    assert "on_update='CASCADE'" in code
+    assert "on_delete='CASCADE'" in code

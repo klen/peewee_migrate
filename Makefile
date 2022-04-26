@@ -53,7 +53,7 @@ $(VIRTUAL_ENV): requirements/requirements.txt requirements/requirements-tests.tx
 .PHONY: t test
 # target: test - Runs tests
 t test: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pytest tests
+	@$(VIRTUAL_ENV)/bin/pytest
 
 mypy: $(VIRTUAL_ENV)
 	$(VIRTUAL_ENV)/bin/mypy peewee_migrate
