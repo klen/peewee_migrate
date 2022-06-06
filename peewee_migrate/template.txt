@@ -23,6 +23,7 @@ Some examples (model - class or model name)::
 
 import datetime as dt
 import peewee as pw
+from peewee_migrate import Migrator
 from decimal import ROUND_HALF_EVEN
 
 try:
@@ -33,11 +34,11 @@ except ImportError:
 SQL = pw.SQL
 
 
-def migrate(migrator, database, fake=False, **kwargs):
+def migrate(migrator: Migrator, database, fake=False, **kwargs):
     """Write your migrations here."""
 {migrate}
 
 
-def rollback(migrator, database, fake=False, **kwargs):
+def rollback(migrator: Migrator, database, fake=False, **kwargs):
     """Write your rollback migrations here."""
 {rollback}
