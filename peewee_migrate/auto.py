@@ -168,8 +168,8 @@ def diff_many(models1, models2, migrator=None, reverse=False):
         models1 = reversed(models1)
         models2 = reversed(models2)
 
-    models1 = OrderedDict([(m._meta.name, m) for m in models1])
-    models2 = OrderedDict([(m._meta.name, m) for m in models2])
+    models1 = OrderedDict([(m._meta.table_name, m) for m in models1])
+    models2 = OrderedDict([(m._meta.table_name, m) for m in models2])
 
     changes = []
 

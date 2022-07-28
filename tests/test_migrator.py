@@ -1,5 +1,7 @@
+import peewee as pw
+
+
 def test_migrator():
-    import peewee as pw
     from playhouse.db_url import connect
 
     from peewee_migrate import Migrator
@@ -134,7 +136,6 @@ def test_migrator_postgres():
 
 
 def test_rename_column(Order, migrator):
-    migrator.run()
     Order = migrator.orm["order"]
     migrator.rename_column("order", "customer", "user")
     assert Order._meta.columns["user_id"]
@@ -147,3 +148,18 @@ def test_rename_column(Order, migrator):
     migrator.rename_column("order", "user", "customer")
     [operation] = migrator.ops
     assert operation.args == ("order", "user_id", "customer_id")
+
+
+def test_rename_table(Customer, migrator):
+    migrator.rename_table("customer", "user")
+    [operation] = migrator.ops
+    assert operation.args == ("customer", "user")
+
+    class User(pw.Model):
+        name = pw.CharField()
+        age = pw.IntegerField()
+
+    from peewee_migrate.auto import diff_many
+
+    migrations = diff_many([migrator.orm["user"]], [User], migrator)
+    assert not migrations

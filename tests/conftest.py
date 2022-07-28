@@ -35,3 +35,8 @@ def Order(Customer, migrator):
         customer = ForeignKeyField(Customer, column_name="customer_id")
 
     return Order
+
+
+@pytest.fixture(autouse=True)
+def run_migrator(Customer, Order, migrator):
+    migrator.run()
