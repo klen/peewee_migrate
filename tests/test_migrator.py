@@ -138,3 +138,6 @@ def test_rename_column(Order, migrator):
     Order = migrator.orm["order"]
     migrator.rename_column("order", "customer", "user")
     assert Order._meta.columns["user_id"]
+    assert Order._meta.fields["user"]
+    [operation] = migrator.ops
+    assert operation.args == ("order", "customer_id", "user_id")

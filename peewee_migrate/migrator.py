@@ -313,10 +313,12 @@ class Migrator(object):
         self.__del_field__(model, field)
         field.name = field.column_name = new_name
         if isinstance(field, pw.ForeignKeyField):
-            field.column_name = new_name = field.column_name + "_id"
+            field.column_name = field.column_name + "_id"
         model._meta.add_field(new_name, field)
         self.ops.append(
-            self.migrator.rename_column(model._meta.table_name, old_name, new_name)
+            self.migrator.rename_column(
+                model._meta.table_name, old_name, field.column_name
+            )
         )
         return model
 
