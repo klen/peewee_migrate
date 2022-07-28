@@ -301,7 +301,8 @@ class Migrator(object):
             obj_id_name = field.column_name
             if field.column_name == field.name:
                 obj_id_name += "_id"
-            delattr(model, obj_id_name)
+            if hasattr(model, obj_id_name):
+                delattr(model, obj_id_name)
             delattr(field.rel_model, field.backref)
 
     @get_model

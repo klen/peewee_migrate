@@ -141,3 +141,9 @@ def test_rename_column(Order, migrator):
     assert Order._meta.fields["user"]
     [operation] = migrator.ops
     assert operation.args == ("order", "customer_id", "user_id")
+
+    # Rollback
+    migrator.run()
+    migrator.rename_column("order", "user", "customer")
+    [operation] = migrator.ops
+    assert operation.args == ("order", "user_id", "customer_id")
