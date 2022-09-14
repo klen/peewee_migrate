@@ -9,7 +9,7 @@ import peewee as pw
 # Package information
 # ===================
 
-__version__ = "1.4.12"
+__version__ = "1.5.0"
 __project__ = "peewee_migrate"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "BSD"
