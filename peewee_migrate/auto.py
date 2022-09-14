@@ -156,6 +156,22 @@ def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
         else:
             changes.append(drop_index(model1, name))
 
+    # Check additional compound indexes
+    indexes1 = model1._meta.indexes
+    indexes2 = model2._meta.indexes
+
+    # Drop compound indexes
+    indexes_to_drop = set(indexes2) - set(indexes1)
+    for index in indexes_to_drop:
+        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1:
+            changes.append(drop_index(model1, name=index[0]))
+
+    # Add compound indexes
+    indexes_to_add = set(indexes1) - set(indexes2)
+    for index in indexes_to_add:
+        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1:
+            changes.append(add_index(model1, name=index[0], unique=index[1]))
+
     return changes
 
 
