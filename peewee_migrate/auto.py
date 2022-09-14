@@ -330,11 +330,11 @@ def add_index(
     Model: pw.Model, name: t.Union[str, t.Iterable[str]], unique: bool
 ) -> str:
     """Generate migrations."""
-    return (
-        f"migrator.add_index('{Model._meta.table_name}', {repr(name)}, unique={unique})"
-    )
+    columns = repr(name).strip("()[]")
+    return f"migrator.add_index('{Model._meta.table_name}', {columns}, unique={unique})"
 
 
 def drop_index(Model: pw.Model, name: t.Union[str, t.Iterable[str]]) -> str:
     """Generate migrations."""
-    return f"migrator.drop_index('{Model._meta.table_name}', {repr(name)})"
+    columns = repr(name).strip("()[]")
+    return f"migrator.drop_index('{Model._meta.table_name}', {columns})"

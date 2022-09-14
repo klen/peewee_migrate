@@ -118,16 +118,28 @@ def test_diff_multi_column_index():
 
     changes = diff_one(ObjectWithUniqueIndex, Object)
     assert len(changes) == 1
-    assert "('first_name', 'last_name'), unique=True)" in changes[0]
+    assert (
+        changes[0]
+        == "migrator.add_index('objectwithuniqueindex', 'first_name', 'last_name', unique=True)"
+    )
 
     changes = diff_one(ObjectWithNonUniqueIndex, Object)
     assert len(changes) == 1
-    assert "('first_name', 'last_name'), unique=False)" in changes[0]
+    assert (
+        changes[0]
+        == "migrator.add_index('objectwithnonuniqueindex', 'first_name', 'last_name', unique=False)"
+    )
 
     changes = diff_one(ObjectWithNonUniqueIndex, ObjectWithUniqueIndex)
     assert len(changes) == 2
-    assert "drop_index" in changes[0] and "('first_name', 'last_name')" in changes[0]
-    assert "('first_name', 'last_name'), unique=False)" in changes[1]
+    assert (
+        changes[0]
+        == "migrator.drop_index('objectwithnonuniqueindex', 'first_name', 'last_name')"
+    )
+    assert (
+        changes[1]
+        == "migrator.add_index('objectwithnonuniqueindex', 'first_name', 'last_name', unique=False)"
+    )
 
 
 def test_self_referencing_foreign_key_on_model_create():
