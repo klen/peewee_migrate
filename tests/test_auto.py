@@ -95,6 +95,41 @@ def test_auto_multi_column_index():
     assert "indexes = [(('first_name', 'last_name'), True)]" in code
 
 
+def test_diff_multi_column_index():
+    from peewee_migrate.auto import diff_one
+
+    class Object(pw.Model):
+        first_name = pw.CharField()
+        last_name = pw.CharField()
+
+    class ObjectWithUniqueIndex(pw.Model):
+        first_name = pw.CharField()
+        last_name = pw.CharField()
+
+        class Meta:
+            indexes = ((("first_name", "last_name"), True),)
+
+    class ObjectWithNonUniqueIndex(pw.Model):
+        first_name = pw.CharField()
+        last_name = pw.CharField()
+
+        class Meta:
+            indexes = ((("first_name", "last_name"), False),)
+
+    changes = diff_one(ObjectWithUniqueIndex, Object)
+    assert len(changes) == 1
+    assert "('first_name', 'last_name'), unique=True)" in changes[0]
+
+    changes = diff_one(ObjectWithNonUniqueIndex, Object)
+    assert len(changes) == 1
+    assert "('first_name', 'last_name'), unique=False)" in changes[0]
+
+    changes = diff_one(ObjectWithNonUniqueIndex, ObjectWithUniqueIndex)
+    assert len(changes) == 2
+    assert "drop_index" in changes[0] and "('first_name', 'last_name')" in changes[0]
+    assert "('first_name', 'last_name'), unique=False)" in changes[1]
+
+
 def test_self_referencing_foreign_key_on_model_create():
     from peewee_migrate.auto import field_to_code
 
