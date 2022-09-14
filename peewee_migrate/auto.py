@@ -326,18 +326,15 @@ def change_not_null(Model: pw.Model, name: str, null: bool) -> str:
     return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))
 
 
-def add_index(Model: pw.Model, name: str, unique: bool) -> str:
+def add_index(
+    Model: pw.Model, name: t.Union[str, t.Iterable[str]], unique: bool
+) -> str:
     """Generate migrations."""
-    operation = "add_index"
-    return "migrator.%s('%s', %s, unique=%s)" % (
-        operation,
-        Model._meta.table_name,
-        repr(name),
-        unique,
+    return (
+        f"migrator.add_index('{Model._meta.table_name}', {repr(name)}, unique={unique})"
     )
 
 
-def drop_index(Model: pw.Model, name: str) -> str:
+def drop_index(Model: pw.Model, name: t.Union[str, t.Iterable[str]]) -> str:
     """Generate migrations."""
-    operation = "drop_index"
-    return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))
+    return f"migrator.drop_index('{Model._meta.table_name}', {repr(name)})"
