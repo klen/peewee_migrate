@@ -191,17 +191,26 @@ def test_on_update_on_delete():
 
 
 def test_custom_fields():
-    from peewee_migrate.auto import field_to_code
-
-    class CustomDatetimeField(pw.DateTimeField):
-        pass
+    from peewee_migrate.auto import field_to_code, compare_fields
 
     class Test(pw.Model):
-        dtfield = CustomDatetimeField()
+        dtfield = pw.DateTimeField()
         datetime_tz_field = DateTimeTZField()
+
+    code = field_to_code(Test.dtfield)
+    assert code == 'dtfield = pw.DateTimeField()'
 
     code = field_to_code(Test.datetime_tz_field)
     assert code == 'datetime_tz_field = pw_pext.DateTimeTZField()'
 
-    code = field_to_code(Test.dtfield)
+    class CustomDatetimeField(pw.DateTimeField):
+        pass
+
+    class Test2(Test):
+        dtfield = CustomDatetimeField()
+
+    code = field_to_code(Test2.dtfield)
     assert code == 'dtfield = pw.DateTimeField()'
+
+    res = compare_fields(Test2.dtfield, Test.dtfield)
+    assert not res

@@ -63,7 +63,7 @@ class Column(VanilaColumn):
     def __init__(self, field: pw.Field, **kwargs):  # noqa
         super(Column, self).__init__(
             field.name,
-            type(field),
+            _get_field_class(field),
             field.field_type,
             field.null,
             primary_key=field.primary_key,
@@ -77,12 +77,6 @@ class Column(VanilaColumn):
 
         if self.field_class in FIELD_TO_PARAMS:
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
-
-        if self.field_class.__module__ not in PW_MODULES:
-            for cls in self.field_class.mro():
-                if cls.__module__ in PW_MODULES:
-                    self.field_class = cls
-                    break
 
         self.rel_model = None
         self.related_name = None
@@ -118,17 +112,17 @@ def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
     """Find difference between given peewee models."""
     changes = []
 
-    fields1 = model1._meta.fields
-    fields2 = model2._meta.fields
+    field_names1 = model1._meta.fields
+    field_names2 = model2._meta.fields
 
     # Add fields
-    names1 = set(fields1) - set(fields2)
+    names1 = set(field_names1) - set(field_names2)
     if names1:
-        fields = [fields1[name] for name in names1]
+        fields = [field_names1[name] for name in names1]
         changes.append(create_fields(model1, *fields, **kwargs))
 
     # Drop fields
-    names2 = set(fields2) - set(fields1)
+    names2 = set(field_names2) - set(field_names1)
     if names2:
         changes.append(drop_fields(model1, *names2))
 
@@ -136,8 +130,8 @@ def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
     fields_ = []
     nulls_ = []
     indexes_ = []
-    for name in set(fields1) - names1 - names2:
-        field1, field2 = fields1[name], fields2[name]
+    for name in set(field_names1) - names1 - names2:
+        field1, field2 = field_names1[name], field_names2[name]
         diff = compare_fields(field1, field2)
         null = diff.pop("null", None)
         index = diff.pop("index", None)
@@ -159,7 +153,7 @@ def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
 
     for name, index, unique in indexes_:
         if index is True or unique is True:
-            if fields2[name].unique or fields2[name].index:
+            if field_names2[name].unique or field_names2[name].index:
                 changes.append(drop_index(model1, name))
             changes.append(add_index(model1, name, unique))
         else:
@@ -293,7 +287,7 @@ def field_to_code(field: pw.Field, space: bool = True, **kwargs) -> str:
 
 def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> t.Dict:
     """Find diffs between the given fields."""
-    field_cls1, field_cls2 = type(field1), type(field2)
+    field_cls1, field_cls2 = _get_field_class(field1), _get_field_class(field2)
     if field_cls1 != field_cls2:  # noqa
         return {"cls": True}
 
@@ -347,3 +341,13 @@ def drop_index(Model: pw.Model, name: t.Union[str, t.Iterable[str]]) -> str:
     """Generate migrations."""
     columns = repr(name).strip("()[]")
     return f"migrator.drop_index('{Model._meta.table_name}', {columns})"
+
+
+def _get_field_class(field: pw.Field) -> pw.Field:
+    field_cls = type(field)
+    if field_cls.__module__ not in PW_MODULES:
+        for cls in field_cls.mro():
+            if cls.__module__ in PW_MODULES:
+                return cls
+
+    return field_cls
