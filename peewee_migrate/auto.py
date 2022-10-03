@@ -18,6 +18,7 @@ FIELD_MODULES_MAP = {
     "JSONField": "pw_pext",
     "TSVectorField": "pw_pext",
 }
+PW_MODULES = 'peewee', 'playhouse.postgres_ext', 'playhouse.fields'
 
 
 def fk_to_params(field: pw.ForeignKeyField) -> t.Dict:
@@ -57,6 +58,8 @@ FIELD_TO_PARAMS = {
 class Column(VanilaColumn):
     """Get field's migration parameters."""
 
+    field_class: t.Type[pw.Field]
+
     def __init__(self, field: pw.Field, **kwargs):  # noqa
         super(Column, self).__init__(
             field.name,
@@ -74,6 +77,12 @@ class Column(VanilaColumn):
 
         if self.field_class in FIELD_TO_PARAMS:
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
+
+        if self.field_class.__module__ not in PW_MODULES:
+            for cls in self.field_class.mro():
+                if cls.__module__ in PW_MODULES:
+                    self.field_class = cls
+                    break
 
         self.rel_model = None
         self.related_name = None

@@ -188,3 +188,20 @@ def test_on_update_on_delete():
     code = field_to_code(Employee.manager)
     assert "on_update='CASCADE'" in code
     assert "on_delete='CASCADE'" in code
+
+
+def test_custom_fields():
+    from peewee_migrate.auto import field_to_code
+
+    class CustomDatetimeField(pw.DateTimeField):
+        pass
+
+    class Test(pw.Model):
+        dtfield = CustomDatetimeField()
+        datetime_tz_field = DateTimeTZField()
+
+    code = field_to_code(Test.datetime_tz_field)
+    assert code == 'datetime_tz_field = pw_pext.DateTimeTZField()'
+
+    code = field_to_code(Test.dtfield)
+    assert code == 'dtfield = pw.DateTimeField()'
