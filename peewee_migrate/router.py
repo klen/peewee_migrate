@@ -32,8 +32,6 @@ CLEAN_RE: t.Pattern = re.compile(r'\s+$', re.M)
 CURDIR: Path = Path.cwd()
 DEFAULT_MIGRATE_DIR: Path = CURDIR / 'migrations'
 VOID: t.Callable = lambda m, d: None # noqa
-with open(Path(__file__).parent / 'template.txt') as fp:
-    MIGRATE_TEMPLATE: str = fp.read()
 
 
 class BaseRouter(object):
@@ -249,11 +247,14 @@ class Router(BaseRouter):
         if num is None:
             num = len(self.todo)
 
+        with open(Path(__file__).parent / 'template.txt') as fp:
+            migrate_template: str = fp.read()
+
         name = '{:03}_'.format(num + 1) + name
         filename = name + '.py'
         path = os.path.join(self.migrate_dir, filename)
         with open(path, 'w') as f:
-            f.write(MIGRATE_TEMPLATE.format(migrate=migrate, rollback=rollback, name=filename))
+            f.write(migrate_template.format(migrate=migrate, rollback=rollback, name=filename))
 
         return name
 
