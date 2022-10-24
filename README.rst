@@ -108,10 +108,9 @@ Rollback migrations: ::
 
     $ pw_migrate rollback --help
 
-    Usage: pw_migrate rollback [OPTIONS] [NAME]
+    Usage: pw_migrate rollback [OPTIONS]
 
-        Rollback a migration with given name or number of last migrations  with
-        given --count option as integer number
+        Rollback a migration with given steps --count of last migrations as integer number
 
     Options:
         --count INTEGER   Number of last migrations to be rolled back.Ignored in
