@@ -29,7 +29,7 @@ except ImportError:
 CLEAN_RE: t.Pattern = re.compile(r"\s+$", re.M)
 CURDIR: Path = Path.cwd()
 DEFAULT_MIGRATE_DIR: Path = CURDIR / "migrations"
-VOID: t.Callable = lambda m, d: None  # noqa
+VOID: t.Callable = lambda m, d, fake=None: None  # noqa
 
 
 class BaseRouter(object):
