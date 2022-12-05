@@ -1,4 +1,5 @@
 """CLI integration."""
+import logging
 import os
 import re
 import sys
@@ -63,7 +64,7 @@ def get_router(
 @click.group()
 def cli():
     """Just a group."""
-    pass
+    logging.basicConfig(level=logging.INFO)
 
 
 @cli.command()
