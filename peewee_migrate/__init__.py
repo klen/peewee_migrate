@@ -16,8 +16,7 @@ __license__ = "BSD"
 
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
-LOGGER.addHandler(logging.StreamHandler())
-LOGGER.setLevel(logging.INFO)
+LOGGER.addHandler(logging.NullHandler())
 
 
 class MigrateHistory(pw.Model):
