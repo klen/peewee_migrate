@@ -1,8 +1,8 @@
 """Automatically create migrations."""
 
-import typing as t
 from collections import OrderedDict
-from collections.abc import Hashable
+from collections.abc import Hashable, Iterable
+from typing import Dict, List, Type, Union
 
 import peewee as pw
 from playhouse.reflection import Column as VanilaColumn
@@ -18,10 +18,10 @@ FIELD_MODULES_MAP = {
     "JSONField": "pw_pext",
     "TSVectorField": "pw_pext",
 }
-PW_MODULES = 'peewee', 'playhouse.postgres_ext', 'playhouse.fields'
+PW_MODULES = "peewee", "playhouse.postgres_ext", "playhouse.fields"
 
 
-def fk_to_params(field: pw.ForeignKeyField) -> t.Dict:
+def fk_to_params(field: pw.ForeignKeyField) -> Dict:
     """Get params from the given fk."""
     params = {}
     if field.on_delete is not None:
@@ -33,7 +33,7 @@ def fk_to_params(field: pw.ForeignKeyField) -> t.Dict:
     return params
 
 
-def dtf_to_params(field: pw.DateTimeField) -> t.Dict:
+def dtf_to_params(field: pw.DateTimeField) -> Dict:
     """Get params from the given datetime field."""
     params = {}
     if not isinstance(field.formats, list):
@@ -58,12 +58,12 @@ FIELD_TO_PARAMS = {
 class Column(VanilaColumn):
     """Get field's migration parameters."""
 
-    field_class: t.Type[pw.Field]
+    field_class: Type[pw.Field]
 
     def __init__(self, field: pw.Field, **kwargs):  # noqa
         super(Column, self).__init__(
             field.name,
-            _get_field_class(field),
+            find_field_type(field),
             field.field_type,
             field.null,
             primary_key=field.primary_key,
@@ -79,12 +79,10 @@ class Column(VanilaColumn):
             self.extra_parameters.update(FIELD_TO_PARAMS[self.field_class](field))
 
         self.rel_model = None
-        self.related_name = None
         self.to_field = None
 
         if isinstance(field, pw.ForeignKeyField):
             self.to_field = field.rel_field.name
-            self.related_name = field.backref
             self.rel_model = (
                 "'self'"
                 if field.rel_model == field.model
@@ -100,7 +98,7 @@ class Column(VanilaColumn):
             name=name, field=field, space=space, module=module
         )
 
-    def get_field_parameters(self) -> t.Dict:
+    def get_field_parameters(self) -> Dict:
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
@@ -108,7 +106,7 @@ class Column(VanilaColumn):
         return params
 
 
-def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> t.List[str]:
+def diff_one(model1: pw.Model, model2: pw.Model, **kwargs) -> List[str]:
     """Find difference between given peewee models."""
     changes = []
 
@@ -285,10 +283,10 @@ def field_to_code(field: pw.Field, space: bool = True, **kwargs) -> str:
     return col.get_field(" " if space else "")
 
 
-def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> t.Dict:
+def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> Dict:
     """Find diffs between the given fields."""
-    field_cls1, field_cls2 = _get_field_class(field1), _get_field_class(field2)
-    if field_cls1 != field_cls2:  # noqa
+    ftype1, ftype2 = find_field_type(field1), find_field_type(field2)
+    if ftype1 != ftype2:  # noqa
         return {"cls": True}
 
     params1 = field_to_params(field1)
@@ -299,9 +297,10 @@ def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> t.Dict:
     return dict(set(params1.items()) - set(params2.items()))
 
 
-def field_to_params(field: pw.Field, **kwargs) -> t.Dict:
+def field_to_params(field: pw.Field, **kwargs) -> Dict:
     """Generate params for the given field."""
-    params = FIELD_TO_PARAMS.get(type(field), lambda f: {})(field)
+    ftype = find_field_type(field)
+    params = FIELD_TO_PARAMS.get(ftype, lambda f: {})(field)
     if (
         field.default is not None
         and not callable(field.default)
@@ -329,25 +328,23 @@ def change_not_null(Model: pw.Model, name: str, null: bool) -> str:
     return "migrator.%s('%s', %s)" % (operation, Model._meta.table_name, repr(name))
 
 
-def add_index(
-    Model: pw.Model, name: t.Union[str, t.Iterable[str]], unique: bool
-) -> str:
+def add_index(Model: pw.Model, name: Union[str, Iterable[str]], unique: bool) -> str:
     """Generate migrations."""
     columns = repr(name).strip("()[]")
     return f"migrator.add_index('{Model._meta.table_name}', {columns}, unique={unique})"
 
 
-def drop_index(Model: pw.Model, name: t.Union[str, t.Iterable[str]]) -> str:
+def drop_index(Model: pw.Model, name: Union[str, Iterable[str]]) -> str:
     """Generate migrations."""
     columns = repr(name).strip("()[]")
     return f"migrator.drop_index('{Model._meta.table_name}', {columns})"
 
 
-def _get_field_class(field: pw.Field) -> pw.Field:
-    field_cls = type(field)
-    if field_cls.__module__ not in PW_MODULES:
-        for cls in field_cls.mro():
+def find_field_type(field: pw.Field) -> Type[pw.Field]:
+    ftype = type(field)
+    if ftype.__module__ not in PW_MODULES:
+        for cls in ftype.mro():
             if cls.__module__ in PW_MODULES:
                 return cls
 
-    return field_cls
+    return ftype

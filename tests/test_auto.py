@@ -35,7 +35,7 @@ def test_auto():
     changes = diff_one(Person, Person_, migrator=migrator)
     assert len(changes) == 6
     assert "on_delete='CASCADE'" in changes[0]
-    assert "backref='persons'" in changes[0]
+    assert "backref='persons'" not in changes[0]
     assert changes[-3] == "migrator.drop_not_null('person', 'last_name')"
     assert changes[-2] == "migrator.drop_index('person', 'last_name')"
     assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
@@ -191,17 +191,17 @@ def test_on_update_on_delete():
 
 
 def test_custom_fields():
-    from peewee_migrate.auto import field_to_code, compare_fields
+    from peewee_migrate.auto import compare_fields, field_to_code
 
     class Test(pw.Model):
         dtfield = pw.DateTimeField()
         datetime_tz_field = DateTimeTZField()
 
     code = field_to_code(Test.dtfield)
-    assert code == 'dtfield = pw.DateTimeField()'
+    assert code == "dtfield = pw.DateTimeField()"
 
     code = field_to_code(Test.datetime_tz_field)
-    assert code == 'datetime_tz_field = pw_pext.DateTimeTZField()'
+    assert code == "datetime_tz_field = pw_pext.DateTimeTZField()"
 
     class CustomDatetimeField(pw.DateTimeField):
         pass
@@ -210,7 +210,7 @@ def test_custom_fields():
         dtfield = CustomDatetimeField()
 
     code = field_to_code(Test2.dtfield)
-    assert code == 'dtfield = pw.DateTimeField()'
+    assert code == "dtfield = pw.DateTimeField()"
 
     res = compare_fields(Test2.dtfield, Test.dtfield)
     assert not res

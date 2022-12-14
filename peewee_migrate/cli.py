@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sys
-import typing as t
+from typing import Dict, List, Pattern
 
 import click
 from playhouse.db_url import connect
@@ -11,8 +11,8 @@ from playhouse.db_url import connect
 from . import LOGGER, MIGRATE_TABLE
 from .router import Router
 
-CLEAN_RE: t.Pattern = re.compile(r"\s+$", re.M)
-VERBOSE: t.List[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
+CLEAN_RE: Pattern = re.compile(r"\s+$", re.M)
+VERBOSE: List[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
 
 
 def get_router(
@@ -22,7 +22,7 @@ def get_router(
     verbose: int = 0,
 ) -> Router:
     """Load and initialize a router."""
-    config: t.Dict = {}
+    config: Dict = {}
     logging_level: str = VERBOSE[verbose]
     ignore = schema = None
 
