@@ -1,8 +1,8 @@
 """Automatically create migrations."""
 
 from collections import OrderedDict
-from collections.abc import Hashable, Iterable
-from typing import Dict, List, Type, Union
+from collections.abc import Hashable
+from typing import Dict, Iterable, List, Type, Union
 
 import peewee as pw
 from playhouse.reflection import Column as VanilaColumn
