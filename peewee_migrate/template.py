@@ -1,4 +1,5 @@
-"""Peewee migrations -- {name}.
+TEMPLATE = """\
+\"\"\"Peewee migrations -- {name}.
 
 Some examples (model - class or model name)::
 
@@ -19,26 +20,27 @@ Some examples (model - class or model name)::
     > migrator.drop_not_null(model, *field_names)
     > migrator.add_default(model, field_name, default)
 
+\"\"\"
+
+# import datetime as dt
+# import peewee as pw
+# from peewee_migrate import Migrator
+# from decimal import ROUND_HALF_EVEN
+
+# try:
+#     import playhouse.postgres_ext as pw_pext
+# except ImportError:
+#     pass
+
+# SQL = pw.SQL
+
+
+# def migrate(migrator: Migrator, database, fake=False, **kwargs):
+#     \"\"\"Write your migrations here.\"\"\"
+# {migrate}
+
+
+# def rollback(migrator: Migrator, database, fake=False, **kwargs):
+#     \"\"\"Write your rollback migrations here.\"\"\"
+# {rollback}
 """
-
-import datetime as dt
-import peewee as pw
-from peewee_migrate import Migrator
-from decimal import ROUND_HALF_EVEN
-
-try:
-    import playhouse.postgres_ext as pw_pext
-except ImportError:
-    pass
-
-SQL = pw.SQL
-
-
-def migrate(migrator: Migrator, database, fake=False, **kwargs):
-    """Write your migrations here."""
-{migrate}
-
-
-def rollback(migrator: Migrator, database, fake=False, **kwargs):
-    """Write your rollback migrations here."""
-{rollback}
