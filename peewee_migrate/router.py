@@ -16,6 +16,7 @@ import peewee as pw
 from peewee_migrate import LOGGER, MigrateHistory
 from peewee_migrate.auto import NEWLINE, diff_many
 from peewee_migrate.migrator import Migrator
+from peewee_migrate.template import TEMPLATE
 
 from . import MIGRATE_TABLE
 
@@ -60,12 +61,6 @@ class BaseRouter(object):
         MigrateHistory._meta.schema = self.schema
         MigrateHistory.create_table(True)
         return MigrateHistory
-
-    @cached_property
-    def template(self) -> str:
-        """Return migration template."""
-        with open(Path(__file__).parent / "template.txt") as fp:
-            return fp.read()
 
     @property
     def todo(self) -> t.List[str]:
@@ -275,9 +270,7 @@ class Router(BaseRouter):
         filename = name + ".py"
         path = os.path.join(self.migrate_dir, filename)
         with open(path, "w") as f:
-            f.write(
-                self.template.format(migrate=migrate, rollback=rollback, name=filename)
-            )
+            f.write(TEMPLATE.format(migrate=migrate, rollback=rollback, name=filename))
 
         return name
 
@@ -354,7 +347,7 @@ def _import_submodules(package, passed=...):
     for loader, name, is_pkg in pkgutil.walk_packages(
         package.__path__, package.__name__ + "."
     ):
-        module = loader.find_module(name).load_module(name)
+        module = loader.find_spec(name).loader.load_module(name)
         modules.append(module)
         if is_pkg:
             modules += _import_submodules(module)
