@@ -22,25 +22,24 @@ Some examples (model - class or model name)::
 
 \"\"\"
 
-# import datetime as dt
-# import peewee as pw
-# from peewee_migrate import Migrator
-# from decimal import ROUND_HALF_EVEN
+import peewee as pw
+from peewee_migrate import Migrator
+from decimal import ROUND_HALF_EVEN
 
-# try:
-#     import playhouse.postgres_ext as pw_pext
-# except ImportError:
-#     pass
+try:
+    import playhouse.postgres_ext as pw_pext
+except ImportError:
+    pass
 
-# SQL = pw.SQL
-
-
-# def migrate(migrator: Migrator, database, fake=False, **kwargs):
-#     \"\"\"Write your migrations here.\"\"\"
-# {migrate}
+SQL = pw.SQL
 
 
-# def rollback(migrator: Migrator, database, fake=False, **kwargs):
-#     \"\"\"Write your rollback migrations here.\"\"\"
-# {rollback}
+def migrate(migrator: Migrator, database: pw.Database, fake=False, **kwargs):
+    \"\"\"Write your migrations here.\"\"\"
+    {migrate}
+
+
+def rollback(migrator: Migrator, database: pw.Database, fake=False, **kwargs):
+    \"\"\"Write your rollback migrations here.\"\"\"
+    {rollback}
 """
