@@ -19,6 +19,9 @@ t test: $(VIRTUAL_ENV)
 mypy: $(VIRTUAL_ENV)
 	@poetry run mypy
 
+v:
+	@poetry version -s
+
 # ==============
 #  Bump version
 # ==============
