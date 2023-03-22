@@ -1,25 +1,34 @@
+from __future__ import annotations
+
 import datetime as dt
-import os.path as path
+from pathlib import Path
 
 import peewee as pw
-from playhouse.postgres_ext import (ArrayField, BinaryJSONField, DateTimeTZField, HStoreField,
-                                    IntervalField, JSONField, TSVectorField)
+from playhouse.postgres_ext import (
+    ArrayField,
+    BinaryJSONField,
+    DateTimeTZField,
+    HStoreField,
+    IntervalField,
+    JSONField,
+    TSVectorField,
+)
 
-CURDIR = path.abspath(path.dirname(__file__))
+CURDIR = Path(__file__).parent
 
 
 def test_auto():
     from peewee_migrate.auto import diff_many, diff_one, model_to_code
     from peewee_migrate.cli import get_router
 
-    router = get_router(path.join(CURDIR, "migrations"), "sqlite:///:memory:")
+    router = get_router(CURDIR / "migrations", "sqlite:///:memory:")
     router.run()
     migrator = router.migrator
-    models = migrator.orm.values()
-    Person_ = migrator.orm["person"]
-    Tag_ = migrator.orm["tag"]
+    models = list(migrator)
+    person_cls = migrator.orm.Person
+    tag_cls = migrator.orm.Tag
 
-    code = model_to_code(Person_)
+    code = model_to_code(person_cls)
     assert code
     assert 'table_name = "person"' in code
 
@@ -29,10 +38,10 @@ def test_auto():
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True, unique=True)
-        tag = pw.ForeignKeyField(Tag_, on_delete="CASCADE", backref="persons")
+        tag = pw.ForeignKeyField(tag_cls, on_delete="CASCADE", backref="persons")
         email = pw.CharField(index=True, unique=True)
 
-    changes = diff_one(Person, Person_, migrator=migrator)
+    changes = diff_one(Person, person_cls, migrator=migrator)
     assert len(changes) == 6
     assert "on_delete='CASCADE'" in changes[0]
     assert "backref='persons'" not in changes[0]
@@ -43,7 +52,7 @@ def test_auto():
     migrator.drop_index("person", "email")
     migrator.add_index("person", "email", unique=True)
 
-    class Person(pw.Model):
+    class Person2(pw.Model):
         first_name = pw.CharField(unique=True)
         last_name = pw.CharField(max_length=255, index=True)
         dob = pw.DateField(null=True)
@@ -51,7 +60,7 @@ def test_auto():
         email = pw.CharField(index=True, unique=True)
         is_deleted = pw.BooleanField(default=False)
 
-    changes = diff_one(Person_, Person, migrator=migrator)
+    changes = diff_one(person_cls, Person2, migrator=migrator)
     assert not changes
 
     class Color(pw.Model):
@@ -133,8 +142,7 @@ def test_diff_multi_column_index():
     changes = diff_one(ObjectWithNonUniqueIndex, ObjectWithUniqueIndex)
     assert len(changes) == 2
     assert (
-        changes[0]
-        == "migrator.drop_index('objectwithnonuniqueindex', 'first_name', 'last_name')"
+        changes[0] == "migrator.drop_index('objectwithnonuniqueindex', 'first_name', 'last_name')"
     )
     assert (
         changes[1]
@@ -173,10 +181,7 @@ def test_column_default():
     from .models import Person
 
     code = field_to_code(Person.is_deleted)
-    assert (
-        code
-        == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'
-    )  # noqa
+    assert code == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'
 
 
 def test_on_update_on_delete():

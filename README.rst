@@ -32,13 +32,14 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 Requirements
 =============
 
-- peewee >= 3.7
+- peewee >= 3.8
 
 Dependency Note
 ---------------
 
 For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``.
-For ``Python<3.7`` please use ``Peewee-Migrate==1.1.6``.
+For ``Python 3.0-3.6`` please use ``Peewee-Migrate==1.1.6``.
+For ``Python 3.7`` please use ``Peewee-Migrate==1.6.6``.
 
 .. _installation:
 
@@ -174,17 +175,8 @@ Contributing
 
 Development of starter happens at github: https://github.com/klen/peewee_migrate
 
-
-.. _license:
-
-License
-========
-
-Licensed under a `BSD license`_.
-
 .. _links:
 
-.. _BSD license: http://www.linfo.org/bsdlicense.html
 .. _klen: https://klen.github.io/
 .. _Flask: http://flask.pocoo.org/
 .. _Flask-PW: https://github.com/klen/flask-pw

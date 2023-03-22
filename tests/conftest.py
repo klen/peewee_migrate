@@ -1,42 +1,37 @@
+from __future__ import annotations
+
 import pytest
+from peewee import CharField, ForeignKeyField, IntegerField, Model
 
 
-@pytest.fixture
-def migrator():
+class Customer(Model):
+    name = CharField()
+    age = IntegerField()
+
+
+class Order(Model):
+    number = CharField()
+    uid = CharField(unique=True)
+
+    customer = ForeignKeyField(Customer, column_name="customer_id")
+
+
+@pytest.fixture()
+def router():
     from playhouse.db_url import connect
-
-    from peewee_migrate import Migrator
+    from peewee_migrate import Router
 
     database = connect("sqlite:///:memory:")
-    return Migrator(database)
+    return Router(database)
 
 
-@pytest.fixture
-def Customer(migrator):
-    from peewee import CharField, IntegerField, Model
+@pytest.fixture()
+def migrator(router):
+    from peewee_migrate import Migrator
+    from playhouse.db_url import connect
 
-    @migrator.create_table
-    class Customer(Model):
-        name = CharField()
-        age = IntegerField()
-
-    return Customer
-
-
-@pytest.fixture
-def Order(Customer, migrator):
-    from peewee import CharField, ForeignKeyField, Model
-
-    @migrator.create_table
-    class Order(Model):
-        number = CharField()
-        uid = CharField(unique=True)
-
-        customer = ForeignKeyField(Customer, column_name="customer_id")
-
-    return Order
-
-
-@pytest.fixture(autouse=True)
-def run_migrator(Customer, Order, migrator):
-    migrator.run()
+    migrator = Migrator(router.database)
+    migrator.create_table(Customer)
+    migrator.create_table(Order)
+    migrator()
+    return migrator

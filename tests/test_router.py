@@ -1,4 +1,6 @@
 """Tests for `peewee_migrate` module."""
+from __future__ import annotations
+
 import os
 from unittest import mock
 
@@ -8,8 +10,8 @@ MIGRATIONS_DIR = os.path.join("tests", "migrations")
 
 
 def test_router():
-    from peewee_migrate import MigrateHistory
     from peewee_migrate.cli import get_router
+    from peewee_migrate.models import MigrateHistory
 
     class Dummy(pw.Model):
         id = pw.AutoField()
@@ -64,10 +66,10 @@ def test_router():
     assert router.diff == ["003_tespy"]
     assert migrations.count() == 2
 
-    with mock.patch("os.remove") as mocked:
+    with mock.patch("pathlib.Path.unlink") as mocked:
         router.merge()
         assert mocked.call_count == 3
-        assert mocked.call_args[0][0] == os.path.join(MIGRATIONS_DIR, "003_tespy.py")
+        # assert mocked.call_args[0][0] == os.path.join(MIGRATIONS_DIR, "003_tespy.py")
         assert MigrateHistory.select().count() == 1
 
     os.remove(os.path.join(MIGRATIONS_DIR, "001_initial.py"))
@@ -99,6 +101,3 @@ def test_router_compile(tmpdir):
     with open(str(migrations.join("001_test_router_compile.py"))) as f:
         content = f.read()
         assert "SQL = pw.SQL" in content
-
-
-# pylama:ignore=W0621

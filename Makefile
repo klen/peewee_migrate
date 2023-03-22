@@ -2,18 +2,22 @@ VIRTUAL_ENV	?= .venv
 
 all: $(VIRTUAL_ENV)
 
-.PHONY: help
-# target: help - Display callable targets
-help:
-	@egrep "^# target:" [Mm]akefile
+# =============
+#  Development
+# =============
 
-.PHONY: clean
-# target: clean - Clean the repository
-clean:
-	rm -rf build/ dist/ docs/_build *.egg-info
-	find $(CURDIR) -name "*.py[co]" -delete
-	find $(CURDIR) -name "*.orig" -delete
-	find $(CURDIR)/$(MODULE) -name "__pycache__" -delete
+$(VIRTUAL_ENV): pyproject.toml
+	@poetry install --with dev
+	@poetry run pre-commit install --hook-type pre-push
+	@touch $(VIRTUAL_ENV)
+
+.PHONY: t test
+# target: test - Runs tests
+t test: $(VIRTUAL_ENV)
+	@poetry run pytest -xsv --mypy tests
+
+mypy: $(VIRTUAL_ENV)
+	@poetry run mypy
 
 # ==============
 #  Bump version
@@ -23,12 +27,14 @@ clean:
 VERSION?=minor
 # target: release - Bump version
 release: $(VIRTUAL_ENV)
-	@bump2version $(VERSION)
+	@$(eval VFROM := $(shell poetry version -s))
+	@poetry version $(VERSION)
+	@git commit -am "Bump version $(VFROM) → `poetry version -s`"
+	@git tag `poetry version -s`
 	@git checkout master
 	@git merge develop
 	@git checkout develop
-	@git push --all
-	@git push --tags
+	@git push --follow-tags origin develop master
 
 .PHONY: minor
 minor: release
@@ -40,20 +46,3 @@ patch:
 .PHONY: major
 major:
 	make release VERSION=major
-
-# =============
-#  Development
-# =============
-
-$(VIRTUAL_ENV): requirements/requirements.txt requirements/requirements-tests.txt
-	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install -e .[tests,build]
-	@touch $(VIRTUAL_ENV)
-
-.PHONY: t test
-# target: test - Runs tests
-t test: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pytest
-
-mypy: $(VIRTUAL_ENV)
-	$(VIRTUAL_ENV)/bin/mypy peewee_migrate

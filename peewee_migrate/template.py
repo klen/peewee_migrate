@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 TEMPLATE = """\
 \"\"\"Peewee migrations -- {name}.
 
 Some examples (model - class or model name)::
 
-    > Model = migrator.orm['model_name']            # Return model in current state by name
+    > Model = migrator.orm['table_name']            # Return model in current state by name
+    > Model = migrator.ModelClass                   # Return model in current state by name
 
     > migrator.sql(sql)                             # Run custom SQL
     > migrator.python(func, *args, **kwargs)        # Run python code
@@ -34,12 +37,12 @@ except ImportError:
 SQL = pw.SQL
 
 
-def migrate(migrator: Migrator, database: pw.Database, fake=False, **kwargs):
+def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     \"\"\"Write your migrations here.\"\"\"
     {migrate}
 
 
-def rollback(migrator: Migrator, database: pw.Database, fake=False, **kwargs):
+def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
     \"\"\"Write your rollback migrations here.\"\"\"
     {rollback}
 """
