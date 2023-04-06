@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from typing import TYPE_CHECKING
 import peewee as pw
 
@@ -168,3 +169,29 @@ def test_rename_table(migrator: Migrator):
 
     migrations = diff_many([migrator.orm["user"]], [User], migrator)
     assert not migrations
+
+
+def test_change_field(migrator: Migrator):
+    class TestTable(pw.Model):
+        class Meta:
+            table_name = "test_table"
+
+        field_with_check = pw.CharField(
+            null=False, constraints=[pw.Check("field_with_check in ('opt1', 'opt2')")]
+        )
+
+    migrator.create_table(TestTable)
+    migrator()
+
+    tt = migrator.orm["test_table"]
+    migrator.change_fields(
+        tt,
+        field_with_check=pw.CharField(
+            null=False,
+            constraints=[pw.Check("field_with_check in ('opt1', 'opt2', 'opt3')")],
+        ),
+    )
+    migrator()
+    tt.insert(field_with_check="opt3").execute()
+    with pytest.raises(pw.IntegrityError):
+        tt.insert(field_with_check="opt4").execute()
