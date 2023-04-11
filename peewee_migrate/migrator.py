@@ -123,7 +123,13 @@ class SqliteMigrator(SchemaMigrator, SqM):
 
     def alter_change_column(self, table: str, column: str, field: pw.Field) -> Operation:
         """Support change columns."""
-        return self._update_column(table, column, lambda a, b: b)  # type: ignore[]
+
+        def fn(c_name, c_def):
+            ctx = self.make_context()
+            ctx.sql(field.ddl(ctx))
+            return ctx.query()[0]
+
+        return self._update_column(table, column, fn)  # type: ignore[]
 
 
 class ORM:
