@@ -22,6 +22,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
+[tool.poetry.scripts]
+pw_migrate = "peewee_migrate.cli:cli"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 peewee = "^3"
