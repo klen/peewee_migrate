@@ -290,7 +290,7 @@ class Router(BaseRouter):
             code = f.read()
             scope = {}
             code = compile(code, "<string>", "exec", dont_inherit=True)
-            exec(code, scope, None)  # noqa:
+            exec(code, scope, None)
             return scope.get("migrate", void), scope.get("rollback", void)
 
     def clear(self):

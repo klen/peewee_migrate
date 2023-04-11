@@ -6,38 +6,38 @@ from peewee_migrate.cli import cli, get_router
 runner = CliRunner()
 
 
-@pytest.fixture
+@pytest.fixture()
 def dir_option(tmpdir):
     return "--directory=%s" % tmpdir
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_url(tmpdir):
-    db_path = "%s/test_sqlite.db" % tmpdir
-    open(db_path, "a").close()
+    db_path = tmpdir / "test_sqlite.db"
+    db_path.open("a").close()
     return "sqlite:///%s" % db_path
 
 
-@pytest.fixture
+@pytest.fixture()
 def db_option(db_url):
     return "--database=%s" % db_url
 
 
-@pytest.fixture
+@pytest.fixture()
 def router(tmpdir, db_url):
     return lambda: get_router(str(tmpdir), db_url)
 
 
-@pytest.fixture
+@pytest.fixture()
 def migrations(router):
     migrations_number = 5
     name = "test"
-    for i in range(migrations_number):
+    for _i in range(migrations_number):
         router().create(name)
     return ["00%s_test" % i for i in range(1, migrations_number + 1)]
 
 
-@pytest.fixture
+@pytest.fixture()
 def migrations_str(migrations):
     return ", ".join(migrations)
 
@@ -51,7 +51,7 @@ def test_help():
 
 
 def test_create(dir_option, db_option):
-    for i in range(2):
+    for _i in range(2):
         result = runner.invoke(cli, ["create", dir_option, db_option, "-vvv", "test"])
         assert result.exit_code == 0
 
@@ -72,13 +72,9 @@ def test_rollback(dir_option, db_option, router, migrations):
     router().run()
 
     count_overflow = len(migrations) + 1
-    result = runner.invoke(
-        cli, ["rollback", dir_option, db_option, "--count=%s" % count_overflow]
-    )
+    result = runner.invoke(cli, ["rollback", dir_option, db_option, "--count=%s" % count_overflow])
     assert result.exception
-    assert (
-        "Unable to rollback %s migrations" % count_overflow in result.exception.args[0]
-    )
+    assert "Unable to rollback %s migrations" % count_overflow in result.exception.args[0]
     assert router().done == migrations
 
     result = runner.invoke(cli, ["rollback", dir_option, db_option])
@@ -100,4 +96,3 @@ def test_fake(dir_option, db_option, migrations_str, router):
     assert "Migrations completed: %s" % migrations_str in result.output
 
     # TODO: Find a way of testing fake. This is unclear why the following fails.
-    # assert not router().done

@@ -37,7 +37,7 @@ def get_router(
         try:
             with directory.joinpath("conf.py").open() as cfg:
                 code = compile(cfg.read(), "<string>", "exec", dont_inherit=True)
-                exec(code, config, config)  # noqa: S102
+                exec(code, config, config)
                 database = config.get("DATABASE", database)
                 ignore = config.get("IGNORE", ignore)
                 schema = config.get("SCHEMA", schema)
@@ -71,7 +71,7 @@ def get_router(
 
 @click.group()
 def cli():
-    """Just a group."""
+    """Migrate database with Peewee ORM."""
     logging.basicConfig(level=logging.INFO)
 
 

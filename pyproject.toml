@@ -24,6 +24,7 @@ classifiers = [
 
 [tool.poetry.scripts]
 pw_migrate = "peewee_migrate.cli:cli"
+pw-migrate = "peewee_migrate.cli:cli"
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -42,7 +43,7 @@ ruff = "*"
 line-length = 100
 target-version = "py38"
 select = ["ALL"]
-ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "SLF", "INP001"]
+ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "S", "SLF", "INP001"]
 
 [tool.pytest.ini_options]
 addopts = "-svx --mypy"
