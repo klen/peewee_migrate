@@ -466,3 +466,19 @@ class Migrator:
         meta.defaults[field] = field.default = default
         self.__ops__.append(self.__migrator__.apply_default(meta.table_name, name, field))
         return model
+
+    def add_constraint(self, model: Union[str, TModelType], name, constraint):
+        """Add constraint."""
+        model = self.__get_model__(model)
+        meta = model._meta  # type: ignore[]
+        self.__ops__.append(self.__migrator__.add_constraint(meta.table_name, name, constraint))
+        return model
+
+    def drop_constraints(self, model: Union[str, TModelType], *names: str) -> TModelType:
+        """Drop constraints."""
+        model = self.__get_model__(model)
+        meta = model._meta  # type: ignore[]
+        self.__ops__.extend(
+            [self.__migrator__.drop_constraint(meta.table_name, name) for name in names]
+        )
+        return model

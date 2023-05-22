@@ -20,10 +20,12 @@ Some examples (model - class or model name)::
     > migrator.rename_field(model, old_field_name, new_field_name)
     > migrator.rename_table(model, new_table_name)
     > migrator.add_index(model, *col_names, unique=False)
-    > migrator.drop_index(model, *col_names)
     > migrator.add_not_null(model, *field_names)
-    > migrator.drop_not_null(model, *field_names)
     > migrator.add_default(model, field_name, default)
+    > migrator.add_constraint(model, name, sql)
+    > migrator.drop_index(model, *col_names)
+    > migrator.drop_not_null(model, *field_names)
+    > migrator.drop_constraints(model, *constraints)
 
 \"\"\"
 

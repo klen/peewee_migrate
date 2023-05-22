@@ -8,6 +8,11 @@ class Person(pw.Model):
     is_deleted = pw.BooleanField(default=False)
 
 
+class Pet(pw.Model):
+    name = pw.CharField(max_length=1024)
+    owner = pw.ForeignKeyField(Person, backref="pets")
+
+
 class Color(pw.Model):
     id = pw.AutoField()
-    name = pw.CharField(default='red')
+    name = pw.CharField(default="red")
