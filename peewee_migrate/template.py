@@ -36,8 +36,6 @@ try:
 except ImportError:
     pass
 
-SQL = pw.SQL
-
 
 def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     \"\"\"Write your migrations here.\"\"\"
