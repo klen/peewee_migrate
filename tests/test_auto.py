@@ -64,13 +64,6 @@ def test_auto():
     changes = diff_one(person_cls, Person2, migrator=migrator)
     assert not changes
 
-    class Color(pw.Model):
-        id = pw.AutoField()
-        name = pw.CharField(default="red")
-
-    code = model_to_code(Color)
-    assert "default='red'" in code
-
 
 def test_auto_postgresext():
     from peewee_migrate.auto import model_to_code
@@ -182,7 +175,7 @@ def test_column_default():
     from .models import Person
 
     code = field_to_code(Person.is_deleted)
-    assert code == "is_deleted = pw.BooleanField(default=False)"
+    assert code == "is_deleted = pw.BooleanField()"
 
 
 def test_on_update_on_delete():
@@ -253,7 +246,7 @@ def test_custom_fields2():
         enum_field = EnumField(TestEnum, default=TestEnum.A)
 
     code = field_to_code(Test.enum_field)
-    assert code == "enum_field = pw.CharField(default='a', max_length=255)"
+    assert code == "enum_field = pw.CharField(max_length=255)"
 
 
 def test_update_fk(migrator):

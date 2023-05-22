@@ -85,15 +85,9 @@ class Column(VanilaColumn):
             column_name=field.column_name,
             index=field.index,
             unique=field.unique,
+            default=field.default,
             **kwargs,
         )
-
-        if (
-            field.default is not None
-            and not callable(field.default)
-            and not isinstance(field.default, pw.Node)
-        ):
-            self.default = repr(field.db_value(field.default))
 
         if self.field_class in FIELD_TO_PARAMS:
             if self.extra_parameters is None:  # type: ignore[has-type]
@@ -125,7 +119,6 @@ class Column(VanilaColumn):
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
-            params["default"] = self.default
             params.pop("constraints", None)
 
         params.pop("backref", None)
