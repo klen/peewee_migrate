@@ -121,7 +121,7 @@ class Column(VanilaColumn):
             name=name, field=field, space=space, module=module
         )
 
-    def get_field_parameters(self, *, indexes=False) -> TParams:
+    def get_field_parameters(self, *, change=False) -> TParams:
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
@@ -129,9 +129,11 @@ class Column(VanilaColumn):
             params.pop("constraints", None)
 
         params.pop("backref", None)
-        if indexes:
+        if change:
             params["unique"] = bool(params.pop("unique", False))
             params["index"] = bool(params.pop("index", False)) or params["unique"]
+            params.pop("on_delete", None)
+            params.pop("on_update", None)
 
         return params
 
@@ -323,8 +325,8 @@ def compare_fields(field1: pw.Field, field2: pw.Field) -> Dict:
         Column(field2, extra_parameters={"index": field2.index, "unique": field2.unique}),
     )
     params1, params2 = (
-        col1.get_field_parameters(indexes=True),
-        col2.get_field_parameters(indexes=True),
+        col1.get_field_parameters(change=True),
+        col2.get_field_parameters(change=True),
     )
     return dict(set(params1.items()) - set(params2.items()))
 

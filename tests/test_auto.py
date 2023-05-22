@@ -254,3 +254,19 @@ def test_custom_fields2():
 
     code = field_to_code(Test.enum_field)
     assert code == "enum_field = pw.CharField(default='a', max_length=255)"
+
+
+def test_update_fk(migrator):
+    class Test(pw.Model):
+        pass
+
+    class Test2(pw.Model):
+        test = pw.ForeignKeyField(Test, null=True, on_delete="CASCADE")
+
+    class Test3(pw.Model):
+        test = pw.ForeignKeyField(Test, null=True, on_delete="SET NULL")
+
+    from peewee_migrate.auto import compare_fields
+
+    res = compare_fields(Test2.test, Test3.test)
+    assert not res

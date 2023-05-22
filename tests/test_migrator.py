@@ -157,6 +157,7 @@ def test_rename_table(migrator: Migrator):
 
 
 def test_change_field_constraint(migrator: Migrator):
+    @migrator.create_table
     class TestTable(pw.Model):
         class Meta:
             table_name = "test_table"
@@ -165,7 +166,6 @@ def test_change_field_constraint(migrator: Migrator):
             null=False, constraints=[pw.Check("field_with_check in ('opt1', 'opt2')")]
         )
 
-    migrator.create_table(TestTable)
     migrator()
 
     tt = migrator.orm["test_table"]
@@ -185,10 +185,10 @@ def test_change_field_constraint(migrator: Migrator):
 
 @pytest.mark.parametrize("dburl", ["postgres:///fake"])
 def test_change_field_default(migrator: Migrator, database):
+    @migrator.create_table
     class TestTable(pw.Model):
         field_with_default = pw.CharField(constraints=[pw.SQL("DEFAULT 'test'")])
 
-    migrator.create_table(TestTable)
     migrator()
 
     migrator.change_fields(

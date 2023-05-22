@@ -13,7 +13,7 @@ class MigrateHistory(pw.Model):
     name = pw.CharField()
     migrated_at = pw.DateTimeField(default=dt.datetime.utcnow)
 
-    def __unicode__(self) -> str:
+    def __str__(self) -> str:
         """String representation."""
         return self.name  # type: ignore[]
 
