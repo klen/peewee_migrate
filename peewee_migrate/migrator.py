@@ -57,29 +57,42 @@ class SchemaMigrator(ScM):
         return lambda: model.drop_table(cascade=cascade)
 
     @operation
+    def sql(self, sql: str, *params) -> SQL:
+        """Execute raw SQL."""
+        return SQL(sql, *params)
+
+    @operation
     def change_column(
         self, table: str, column_name: str, field: pw.Field
     ) -> List[Union[Context, Operation]]:
         """Change column."""
-        operations: List[Union[Context, Operation]] = [
-            self.alter_change_column(table, column_name, field)
-        ]
+        operations: List[Union[Context, Operation]] = self.alter_change_column(
+            table, column_name, field
+        )
         if not field.null:
-            operations.extend([self.add_not_null(table, column_name)])
+            operations.append(self.add_not_null(table, column_name))
         return operations
 
-    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Context:
+    def alter_change_column(
+        self, table: str, column: str, field: pw.Field
+    ) -> List[Union[Context, Operation]]:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
         ctx = self._alter_table(ctx, table).literal(" ALTER COLUMN ").sql(field.ddl(ctx))
         field.null = field_null
-        return ctx
+        return [ctx]
 
     @operation
-    def sql(self, sql: str, *params) -> SQL:
-        """Execute raw SQL."""
-        return SQL(sql, *params)
+    def add_default(self, table, column, field):
+        default = field.default
+        if callable(default):
+            default = default()
+        return (
+            self._alter_column(self.make_context(), table, column)
+            .literal(" SET DEFAULT ")
+            .sql(field.db_value(default))
+        )
 
     def alter_add_column(
         self, table: str, column_name: str, field: pw.Field, **kwargs
@@ -95,24 +108,35 @@ class SchemaMigrator(ScM):
 class MySQLMigrator(SchemaMigrator, MqM):
     """Support MySQL."""
 
-    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Context:
+    def alter_change_column(
+        self, table: str, column: str, field: pw.Field
+    ) -> List[Union[Context, Operation]]:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
         ctx = self._alter_table(ctx, table).literal(" MODIFY COLUMN ").sql(field.ddl(ctx))
         field.null = field_null
-        return ctx
+        return [ctx]
 
 
 class PostgresqlMigrator(SchemaMigrator, PgM):
     """Support the migrations in postgresql."""
 
-    def alter_change_column(self, table: str, column_name: str, field: pw.Field) -> Context:
+    def alter_change_column(
+        self, table: str, column: str, field: pw.Field
+    ) -> List[Union[Context, Operation]]:
         """Support change columns."""
-        context = super(PostgresqlMigrator, self).alter_change_column(table, column_name, field)
-        context._sql.insert(-1, "TYPE")  # type: ignore[]
-        context._sql.insert(-1, " ")  # type: ignore[]
-        return context
+        ctx = self.make_context()
+        fn, field.null = field.null, True
+        fc, field.constraints = field.constraints, []
+        ddl = field.ddl(ctx)
+        ddl.nodes.insert(1, pw.SQL("TYPE"))
+        ctx = self._alter_table(ctx, table).literal(" ALTER COLUMN ").sql(ddl)
+        field.null, field.constraints = fn, fc
+        res = [ctx]
+        if field.default is not None:
+            res.append(self.add_default(table, column, field))
+        return res
 
 
 class SqliteMigrator(SchemaMigrator, SqM):
@@ -122,7 +146,9 @@ class SqliteMigrator(SchemaMigrator, SqM):
         """Sqlite doesnt support cascade syntax by default."""
         return lambda: model.drop_table(cascade=False)
 
-    def alter_change_column(self, table: str, column: str, field: pw.Field) -> Operation:
+    def alter_change_column(
+        self, table: str, column: str, field: pw.Field
+    ) -> List[Union[Operation, Context]]:
         """Support change columns."""
 
         def fn(c_name, c_def):
@@ -130,7 +156,7 @@ class SqliteMigrator(SchemaMigrator, SqM):
             ctx.sql(field.ddl(ctx))
             return ctx.query()[0]
 
-        return self._update_column(table, column, fn)  # type: ignore[]
+        return [self._update_column(table, column, fn)]  # type: ignore[]
 
 
 class ORM:

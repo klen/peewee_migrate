@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import pytest
 from typing import TYPE_CHECKING
+
 import peewee as pw
+import pytest
+from playhouse.test_utils import count_queries
 
 if TYPE_CHECKING:
     from peewee_migrate import Migrator
@@ -97,26 +99,12 @@ def test_migrator(router):
     assert not Order._meta.indexes  # type: ignore[]
 
 
-def test_migrator_postgres():
+@pytest.mark.parametrize("dburl", ["postgres:///fake"])
+def test_migrator_postgres(migrator, database):
     """
     Ensure change_fields generates queries and
     does not cause exception
     """
-    import peewee as pw
-
-    # Monkey patch psycopg2 connect
-    import psycopg2
-    from playhouse.db_url import connect
-
-    from peewee_migrate import Migrator
-
-    from .mocks import postgres
-
-    psycopg2.connect = postgres.MockConnection
-
-    database = connect("postgres:///fake")
-
-    migrator = Migrator(database)
 
     @migrator.create_table
     class User(pw.Model):
@@ -128,9 +116,8 @@ def test_migrator_postgres():
     # Date -> DateTime
     migrator.change_fields("user", created_at=pw.DateTimeField())
     migrator()
-    assert (
-        'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in database.cursor().queries
-    )
+    queries = database.cursor().queries
+    assert 'ALTER TABLE "user" ALTER COLUMN "created_at" TYPE TIMESTAMP' in queries
 
     # Char -> Text
     migrator.change_fields("user", name=pw.TextField())
@@ -155,8 +142,6 @@ def test_rename_column(migrator: Migrator):
 
 
 def test_rename_table(migrator: Migrator):
-    from .conftest import Customer
-
     migrator.rename_table("customer", "user")
     [operation] = migrator.__ops__
     assert operation.args == ("customer", "user")  # type: ignore[union-attr]
@@ -171,7 +156,7 @@ def test_rename_table(migrator: Migrator):
     assert not migrations
 
 
-def test_change_field(migrator: Migrator):
+def test_change_field_constraint(migrator: Migrator):
     class TestTable(pw.Model):
         class Meta:
             table_name = "test_table"
@@ -192,6 +177,37 @@ def test_change_field(migrator: Migrator):
         ),
     )
     migrator()
+
     tt.insert(field_with_check="opt3").execute()
     with pytest.raises(pw.IntegrityError):
         tt.insert(field_with_check="opt4").execute()
+
+
+@pytest.mark.parametrize("dburl", ["postgres:///fake"])
+def test_change_field_default(migrator: Migrator, database):
+    class TestTable(pw.Model):
+        field_with_default = pw.CharField(constraints=[pw.SQL("DEFAULT 'test'")])
+
+    migrator.create_table(TestTable)
+    migrator()
+
+    migrator.change_fields(
+        "testtable",
+        field_with_default=pw.CharField(default=22),
+    )
+    with count_queries() as counter:
+        migrator()
+
+    queries = counter.get_queries()
+    assert queries[0].msg == (
+        'ALTER TABLE "testtable" ALTER COLUMN "field_with_default" TYPE VARCHAR(255)',
+        [],
+    )
+    assert queries[1].msg == (
+        'ALTER TABLE "testtable" ALTER COLUMN "field_with_default" SET DEFAULT %s',
+        ["22"],
+    )
+    assert queries[2].msg == (
+        'ALTER TABLE "testtable" ALTER COLUMN "field_with_default" SET NOT NULL',
+        [],
+    )

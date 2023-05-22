@@ -69,7 +69,7 @@ def test_auto():
         name = pw.CharField(default="red")
 
     code = model_to_code(Color)
-    assert "DEFAULT 'red'" in code
+    assert "default='red'" in code
 
 
 def test_auto_postgresext():
@@ -182,7 +182,7 @@ def test_column_default():
     from .models import Person
 
     code = field_to_code(Person.is_deleted)
-    assert code == 'is_deleted = pw.BooleanField(constraints=[SQL("DEFAULT False")], default=False)'
+    assert code == "is_deleted = pw.BooleanField(default=False)"
 
 
 def test_on_update_on_delete():
@@ -253,8 +253,4 @@ def test_custom_fields2():
         enum_field = EnumField(TestEnum, default=TestEnum.A)
 
     code = field_to_code(Test.enum_field)
-    assert (
-        code
-        == "enum_field = pw.CharField(constraints=[SQL(\"DEFAULT 'a'\")], default='a',"
-        " max_length=255)"
-    )
+    assert code == "enum_field = pw.CharField(default='a', max_length=255)"

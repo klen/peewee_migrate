@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from peewee import CharField, ForeignKeyField, IntegerField, Model, Check
+from peewee import CharField, ForeignKeyField, IntegerField, Model
 
 
 class Customer(Model):
@@ -17,21 +17,41 @@ class Order(Model):
 
 
 @pytest.fixture()
-def router():
+def dburl():
+    return "sqlite:///:memory:"
+
+
+@pytest.fixture()
+def router(dburl):
     from playhouse.db_url import connect
+
     from peewee_migrate import Router
 
-    database = connect("sqlite:///:memory:")
+    database = connect(dburl)
     return Router(database)
 
 
 @pytest.fixture()
-def migrator(router):
+def migrator(database):
     from peewee_migrate import Migrator
-    from playhouse.db_url import connect
 
-    migrator = Migrator(router.database)
+    migrator = Migrator(database)
     migrator.create_table(Customer)
     migrator.create_table(Order)
     migrator()
     return migrator
+
+
+@pytest.fixture()
+def database(router):
+    return router.database
+
+
+@pytest.fixture(autouse=True)
+def _patch_postgres(dburl):
+    # Monkey patch psycopg2 connect
+    import psycopg2
+
+    from .mocks import postgres
+
+    psycopg2.connect = postgres.MockConnection
