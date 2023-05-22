@@ -85,7 +85,6 @@ class Column(VanilaColumn):
             column_name=field.column_name,
             index=field.index,
             unique=field.unique,
-            default=field.default,
             **kwargs,
         )
 
@@ -118,9 +117,6 @@ class Column(VanilaColumn):
     def get_field_parameters(self, *, change=False) -> TParams:
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
-        if self.default is not None:
-            params.pop("constraints", None)
-
         params.pop("backref", None)
         if change:
             params["unique"] = bool(params.pop("unique", False))

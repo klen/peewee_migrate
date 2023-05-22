@@ -64,6 +64,15 @@ class SchemaMigrator(ScM):
             operations.append(self.add_not_null(table, column_name))
         return operations
 
+    @operation
+    def add_default(self, table: str, column: str, field: pw.Field):
+        default = field.default
+        if callable(default):
+            default = default()
+        alter_column: pw.Context = self._alter_column(self.make_context(), table, column)
+        ctx: pw.Context = alter_column.literal(" SET DEFAULT ")
+        return ctx.sql(field.db_value(default))
+
     def alter_change_column(
         self, table: str, column: str, field: pw.Field
     ) -> List[Union[Context, Operation]]:
@@ -73,17 +82,6 @@ class SchemaMigrator(ScM):
         ctx = self._alter_table(ctx, table).literal(" ALTER COLUMN ").sql(field.ddl(ctx))
         field.null = field_null
         return [ctx]
-
-    @operation
-    def add_default(self, table, column, field):
-        default = field.default
-        if callable(default):
-            default = default()
-        return (
-            self._alter_column(self.make_context(), table, column)
-            .literal(" SET DEFAULT ")
-            .sql(field.db_value(default))
-        )
 
     def alter_add_column(
         self, table: str, column_name: str, field: pw.Field, **kwargs

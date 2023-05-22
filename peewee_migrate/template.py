@@ -27,14 +27,14 @@ Some examples (model - class or model name)::
 
 \"\"\"
 
+from contextlib import suppress
+
 import peewee as pw
 from peewee_migrate import Migrator
-from decimal import ROUND_HALF_EVEN
 
-try:
+
+with suppress(ImportError):
     import playhouse.postgres_ext as pw_pext
-except ImportError:
-    pass
 
 
 def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
