@@ -87,7 +87,12 @@ class Column(VanilaColumn):
             unique=field.unique,
             **kwargs,
         )
-        if field.default is not None and not callable(field.default):
+
+        if (
+            field.default is not None
+            and not callable(field.default)
+            and not isinstance(field.default, pw.Node)
+        ):
             self.default = repr(field.db_value(field.default))
 
         if self.field_class in FIELD_TO_PARAMS:
@@ -116,7 +121,7 @@ class Column(VanilaColumn):
             name=name, field=field, space=space, module=module
         )
 
-    def get_field_parameters(self, *, indexes=False) -> TParams:
+    def get_field_parameters(self, *, indexes=False, constraints=True) -> TParams:
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
@@ -126,6 +131,10 @@ class Column(VanilaColumn):
         if indexes:
             params["unique"] = bool(params.pop("unique", False))
             params["index"] = bool(params.pop("index", False)) or params["unique"]
+
+        if not constraints:
+            params.pop("constraints", None)
+
         return params
 
 
@@ -149,9 +158,9 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
         changes.append(drop_fields(model1, *names2))
 
     # Change fields
-    fields_ = []
-    nulls_ = []
-    indexes_ = []
+    fields_to_change = []
+    fields_nulls = []
+    fields_indexes = []
     for name in set(field_names1) - names1 - names2:
         field1, field2 = field_names1[name], field_names2[name]
         diff = compare_fields(field1, field2)
@@ -160,21 +169,21 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
         unique = diff.pop("unique", None)
 
         if diff:
-            fields_.append(field1)
+            fields_to_change.append((field1, diff))
 
         if null is not None:
-            nulls_.append((name, null))
+            fields_nulls.append((name, null))
 
         if (index is not None) or (unique is not None):
-            indexes_.append((name, index, unique))
+            fields_indexes.append((name, index, unique))
 
-    if fields_:
-        changes.append(change_fields(model1, *fields_, **kwargs))
+    if fields_to_change:
+        changes.append(change_fields(model1, *fields_to_change))
 
-    for name, null in nulls_:
+    for name, null in fields_nulls:
         changes.append(change_not_null(model1, name, null=null))
 
-    for name, index, unique in indexes_:
+    for name, index, unique in fields_indexes:
         if (index is True) or (unique is True):
             if field_names2[name].unique or field_names2[name].index:
                 changes.append(drop_index(model1, name))
@@ -237,10 +246,10 @@ def diff_many(
     return changes
 
 
-def model_to_code(model_cls: TModelType, **kwargs) -> str:
+def model_to_code(model_type: TModelType, **kwargs) -> str:
     """Generate migrations for the given model."""
     template = "class {classname}(pw.Model):\n{fields}\n\n{meta}"
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     fields = INDENT + NEWLINE.join(
         [
             field_to_code(field, **kwargs)
@@ -265,23 +274,23 @@ def model_to_code(model_cls: TModelType, **kwargs) -> str:
         )
     )
 
-    return template.format(classname=model_cls.__name__, fields=fields, meta=meta)
+    return template.format(classname=model_type.__name__, fields=fields, meta=meta)
 
 
-def create_model(model_cls: TModelType, **kwargs) -> str:
+def create_model(model_type: TModelType, **kwargs) -> str:
     """Generate migrations to create model."""
-    return "@migrator.create_model\n" + model_to_code(model_cls, **kwargs)
+    return "@migrator.create_model\n" + model_to_code(model_type, **kwargs)
 
 
-def remove_model(model_cls: TModelType, **kwargs) -> str:
+def remove_model(model_type: TModelType, **kwargs) -> str:
     """Generate migrations to remove model."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     return "migrator.remove_model('%s')" % meta.table_name
 
 
-def create_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
+def create_fields(model_type: TModelType, *fields: pw.Field, **kwargs) -> str:
     """Generate migrations to add fields."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     return "migrator.add_fields(%s'%s', %s)" % (
         NEWLINE,
         meta.table_name,
@@ -290,9 +299,9 @@ def create_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
     )
 
 
-def drop_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
+def drop_fields(model_type: TModelType, *fields: pw.Field, **kwargs) -> str:
     """Generate migrations to remove fields."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     return "migrator.remove_fields('%s', %s)" % (
         meta.table_name,
         ", ".join(map(repr, fields)),
@@ -309,43 +318,45 @@ def compare_fields(field1: pw.Field, field2: pw.Field) -> Dict:
     """Find diffs between the given fields."""
     ftype1, ftype2 = find_field_type(field1), find_field_type(field2)
     if ftype1 != ftype2:
-        return {"cls": True}
+        return {"type": True}
 
-    col1, col2 = Column(
-        field1, extra_parameters={"index": field1.index, "unique": field1.unique}
-    ), Column(field2, extra_parameters={"index": field2.index, "unique": field2.unique})
-    params1, params2 = col1.get_field_parameters(indexes=True), col2.get_field_parameters(
-        indexes=True
+    col1, col2 = (
+        Column(field1, extra_parameters={"index": field1.index, "unique": field1.unique}),
+        Column(field2, extra_parameters={"index": field2.index, "unique": field2.unique}),
+    )
+    params1, params2 = (
+        col1.get_field_parameters(indexes=True, constraints=False),
+        col2.get_field_parameters(indexes=True, constraints=False),
     )
     return dict(set(params1.items()) - set(params2.items()))
 
 
-def change_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
+def change_fields(model_cls: TModelType, *fields: pw.Tuple[pw.Field, Dict]) -> str:
     """Generate migrations to change fields."""
     meta = model_cls._meta  # type: ignore[]
     return "migrator.change_fields('%s', %s)" % (
         meta.table_name,
-        ("," + NEWLINE).join([field_to_code(f, space=False) for f in fields]),
+        ("," + NEWLINE).join([field_to_code(f, space=False) for f, diff in fields]),
     )
 
 
-def change_not_null(model_cls: TModelType, name: str, *, null: bool) -> str:
+def change_not_null(model_type: TModelType, name: str, *, null: bool) -> str:
     """Generate migrations."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     operation = "drop_not_null" if null else "add_not_null"
     return "migrator.%s('%s', %s)" % (operation, meta.table_name, repr(name))
 
 
-def add_index(model_cls: TModelType, name: Union[str, Iterable[str]], *, unique: bool) -> str:
+def add_index(model_type: TModelType, name: Union[str, Iterable[str]], *, unique: bool) -> str:
     """Generate migrations."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     columns = repr(name).strip("()[]")
     return f"migrator.add_index('{meta.table_name}', {columns}, unique={unique})"
 
 
-def drop_index(model_cls: TModelType, name: Union[str, Iterable[str]]) -> str:
+def drop_index(model_type: TModelType, name: Union[str, Iterable[str]]) -> str:
     """Generate migrations."""
-    meta = model_cls._meta  # type: ignore[]
+    meta = model_type._meta  # type: ignore[]
     columns = repr(name).strip("()[]")
     return f"migrator.drop_index('{meta.table_name}', {columns})"
 

@@ -200,7 +200,7 @@ def test_custom_fields():
     from peewee_migrate.auto import compare_fields, field_to_code
 
     class Test(pw.Model):
-        dtfield = pw.DateTimeField()
+        dtfield = pw.DateTimeField(default=dt.datetime.now)
         datetime_tz_field = DateTimeTZField()
 
     code = field_to_code(Test.dtfield)
