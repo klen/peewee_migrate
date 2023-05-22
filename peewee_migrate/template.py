@@ -1,3 +1,5 @@
+"""Basic template for migration file."""
+
 from __future__ import annotations
 
 TEMPLATE = """\

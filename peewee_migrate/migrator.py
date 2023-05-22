@@ -6,6 +6,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Dict,
     List,
     Union,
     cast,
@@ -136,8 +137,8 @@ class ORM:
     __slots__ = ("__tables__", "__models__")
 
     def __init__(self):
-        self.__tables__ = {}
-        self.__models__ = {}
+        self.__tables__: Dict[str, TModelType] = {}
+        self.__models__: Dict[str, TModelType] = {}
 
     def add(self, model: TModelType):
         self.__models__[model.__name__] = model

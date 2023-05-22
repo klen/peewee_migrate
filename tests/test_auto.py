@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from enum import Enum
 from pathlib import Path
 
 import peewee as pw
@@ -219,3 +220,41 @@ def test_custom_fields():
 
     res = compare_fields(Test2.dtfield, Test.dtfield)
     assert not res
+
+
+def test_custom_fields2():
+    from peewee_migrate.auto import field_to_code
+
+    class EnumField(pw.CharField):
+        def __init__(self, enum, *args, **kwargs):
+            """Initialize the field."""
+            self.enum = enum
+            super().__init__(*args, **kwargs)
+
+        def db_value(self, value):
+            """Convert python value to database."""
+            if value is None:
+                return value
+
+            return value.value
+
+        def python_value(self, value):
+            """Convert database value to python."""
+            if value is None:
+                return value
+
+            return self.enum(value)
+
+    class TestEnum(Enum):
+        A = "a"
+        B = "b"
+
+    class Test(pw.Model):
+        enum_field = EnumField(TestEnum, default=TestEnum.A)
+
+    code = field_to_code(Test.enum_field)
+    assert (
+        code
+        == "enum_field = pw.CharField(constraints=[SQL(\"DEFAULT 'a'\")], default='a',"
+        " max_length=255)"
+    )

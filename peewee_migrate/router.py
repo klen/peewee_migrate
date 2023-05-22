@@ -23,6 +23,8 @@ from .template import TEMPLATE
 if TYPE_CHECKING:
     from logging import Logger
 
+    from peewee_migrate.types import TModelType
+
 
 CLEAN_RE: Final = re.compile(r"\s+$", re.M)
 CURDIR: Final = Path.cwd()
@@ -151,11 +153,7 @@ class BaseRouter(object):
         self.model.delete().execute()
 
     def compile(  # noqa:
-        self,
-        name: str,
-        migrate: str = "",
-        rollback: str = "",
-        num: Optional[int] = None,
+        self, name: str, migrate: str = "", rollback: str = "", num: Optional[int] = None
     ) -> str:
         """Create a migration."""
         raise NotImplementedError
@@ -363,7 +361,7 @@ def _check_model(obj):
     return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, "_meta")
 
 
-def compile_migrations(migrator: Migrator, models, *, reverse=False):
+def compile_migrations(migrator: Migrator, models: List[TModelType], *, reverse=False) -> str:
     """Compile migrations for given models."""
     source = list(migrator.orm)
     if reverse:

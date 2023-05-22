@@ -1,7 +1,6 @@
 """Automatically create migrations."""
 from __future__ import annotations
 
-from collections.abc import Hashable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -86,10 +85,10 @@ class Column(VanilaColumn):
             column_name=field.column_name,
             index=field.index,
             unique=field.unique,
-            extra_parameters=None,
+            **kwargs,
         )
         if field.default is not None and not callable(field.default):
-            self.default = repr(field.default)
+            self.default = repr(field.db_value(field.default))
 
         if self.field_class in FIELD_TO_PARAMS:
             if self.extra_parameters is None:  # type: ignore[has-type]
@@ -117,11 +116,16 @@ class Column(VanilaColumn):
             name=name, field=field, space=space, module=module
         )
 
-    def get_field_parameters(self) -> TParams:
+    def get_field_parameters(self, *, indexes=False) -> TParams:
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         if self.default is not None:
             params["default"] = self.default
+
+        params.pop("backref", None)
+        if indexes:
+            params["unique"] = bool(params.pop("unique", False))
+            params["index"] = bool(params.pop("index", False)) or params["unique"]
         return params
 
 
@@ -153,6 +157,7 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
         diff = compare_fields(field1, field2)
         null = diff.pop("null", None)
         index = diff.pop("index", None)
+        unique = diff.pop("unique", None)
 
         if diff:
             fields_.append(field1)
@@ -160,8 +165,8 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
         if null is not None:
             nulls_.append((name, null))
 
-        if index is not None:
-            indexes_.append((name, index[0], index[1]))
+        if (index is not None) or (unique is not None):
+            indexes_.append((name, index, unique))
 
     if fields_:
         changes.append(change_fields(model1, *fields_, **kwargs))
@@ -170,7 +175,7 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
         changes.append(change_not_null(model1, name, null=null))
 
     for name, index, unique in indexes_:
-        if index is True or unique is True:
+        if (index is True) or (unique is True):
             if field_names2[name].unique or field_names2[name].index:
                 changes.append(drop_index(model1, name))
             changes.append(add_index(model1, name, unique=unique))
@@ -296,39 +301,23 @@ def drop_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
 
 def field_to_code(field: pw.Field, *, space: bool = True, **kwargs) -> str:
     """Generate field description."""
-    col = Column(field, **kwargs)
+    col = Column(field)
     return col.get_field(" " if space else "")
 
 
-def compare_fields(field1: pw.Field, field2: pw.Field, **kwargs) -> Dict:
+def compare_fields(field1: pw.Field, field2: pw.Field) -> Dict:
     """Find diffs between the given fields."""
     ftype1, ftype2 = find_field_type(field1), find_field_type(field2)
     if ftype1 != ftype2:
         return {"cls": True}
 
-    params1 = field_to_params(field1)
-    params1["null"] = field1.null
-    params2 = field_to_params(field2)
-    params2["null"] = field2.null
-
+    col1, col2 = Column(
+        field1, extra_parameters={"index": field1.index, "unique": field1.unique}
+    ), Column(field2, extra_parameters={"index": field2.index, "unique": field2.unique})
+    params1, params2 = col1.get_field_parameters(indexes=True), col2.get_field_parameters(
+        indexes=True
+    )
     return dict(set(params1.items()) - set(params2.items()))
-
-
-def field_to_params(field: pw.Field, **kwargs) -> TParams:
-    """Generate params for the given field."""
-    ftype = find_field_type(field)
-    params = FIELD_TO_PARAMS.get(ftype, lambda f: {})(field)
-    if (
-        field.default is not None
-        and not callable(field.default)
-        and isinstance(field.default, Hashable)
-    ):
-        params["default"] = field.default
-
-    params["index"] = field.index and not field.unique, field.unique
-
-    params.pop("backref", None)  # Ignore backref
-    return params
 
 
 def change_fields(model_cls: TModelType, *fields: pw.Field, **kwargs) -> str:
