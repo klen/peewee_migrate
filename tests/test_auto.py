@@ -175,7 +175,7 @@ def test_column_default():
     from .models import Person
 
     code = field_to_code(Person.is_deleted)
-    assert code == "is_deleted = pw.BooleanField()"
+    assert code == "is_deleted = pw.BooleanField(default=False)"
 
 
 def test_on_update_on_delete():
@@ -246,7 +246,7 @@ def test_custom_fields2():
         enum_field = EnumField(TestEnum, default=TestEnum.A)
 
     code = field_to_code(Test.enum_field)
-    assert code == "enum_field = pw.CharField(max_length=255)"
+    assert code == "enum_field = pw.CharField(default='a', max_length=255)"
 
 
 def test_update_fk(migrator):

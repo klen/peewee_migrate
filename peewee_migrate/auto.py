@@ -87,6 +87,7 @@ class Column(VanilaColumn):
             unique=field.unique,
             **kwargs,
         )
+        self.field = field
 
         if self.field_class in FIELD_TO_PARAMS:
             if self.extra_parameters is None:  # type: ignore[has-type]
@@ -123,6 +124,9 @@ class Column(VanilaColumn):
             params["index"] = bool(params.pop("index", False)) or params["unique"]
             params.pop("on_delete", None)
             params.pop("on_update", None)
+
+        elif self.field.default is not None and not callable(self.field.default):
+            params["default"] = repr(self.field.db_value(self.field.default))
 
         return params
 
