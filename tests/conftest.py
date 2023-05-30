@@ -36,8 +36,8 @@ def migrator(database):
     from peewee_migrate import Migrator
 
     migrator = Migrator(database)
-    migrator.create_table(Customer)
-    migrator.create_table(Order)
+    migrator.create_model(Customer)
+    migrator.create_model(Order)
     migrator()
     return migrator
 

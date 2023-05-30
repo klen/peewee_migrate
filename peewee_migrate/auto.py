@@ -60,9 +60,9 @@ def dtf_to_params(field: pw.DateTimeField) -> TParams:
 FIELD_TO_PARAMS: Dict[Type[pw.Field], Callable[[Any], TParams]] = {
     pw.CharField: lambda f: {"max_length": f.max_length},
     pw.DecimalField: lambda f: {
-        "max_digits": f.max_digits,
-        "decimal_places": f.decimal_places,
         "auto_round": f.auto_round,
+        "decimal_places": f.decimal_places,
+        "max_digits": f.max_digits,
         "rounding": f.rounding,
     },
     pw.ForeignKeyField: fk_to_params,
