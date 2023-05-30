@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union, cast, overload
 
 import peewee as pw
@@ -190,7 +191,7 @@ class Migrator:
         >> migrator.change_fields(Model, name=pw.CharField(null=True))
         """
         model = self.__get_model__(model)
-        meta = model._meta  # type: ignore[]
+        meta: pw.Metadata = model._meta  # type: ignore[]
         for name, field in fields.items():
             old_field = meta.fields.get(name, field)
             old_column_name = old_field and old_field.column_name
@@ -242,7 +243,8 @@ class Migrator:
                 self.__process__(self.__migrator__.add_index(meta.table_name, *index), db=pw_db)
             else:
                 index = field.column_name
-                meta.indexes.remove(((field.column_name,), old_field.unique))
+                with suppress(ValueError):
+                    meta.indexes.remove(((field.column_name,), True))
                 self.__process__(self.__migrator__.drop_index(meta.table_name, index), db=pw_db)
 
         return model
