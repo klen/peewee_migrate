@@ -83,9 +83,13 @@ class Migrator:
         """Iterate over models."""
         return iter(self.orm)
 
-    def __process__(self, *ops, db: bool = True):
-        if db:
-            self.__ops__.extend(ops)
+    def fake(self):
+        """Sync the current snapshot but not run operations.
+
+        >> with migrator.sync():
+        >>  # ... do changes
+        """
+        return SyncContext(self)
 
     @overload
     def __get_model__(self, model: TVModelType) -> TVModelType:
@@ -116,11 +120,10 @@ class Migrator:
         """Run a python function."""
         self.__ops__.append(lambda: func(*args, **kwargs))
 
-    def create_model(self, model: TVModelType, *, pw_db=True) -> TVModelType:
+    def create_model(self, model: TVModelType) -> TVModelType:
         """Create model and table in database.
 
         :param model: Model class
-        :param pw_db(true): Create table in database
 
         >> migrator.create_model(Model)
         """
@@ -128,35 +131,29 @@ class Migrator:
         self.orm.add(model)
 
         meta.database = self.__database__
-        self.__process__(model.create_table, db=pw_db)
+        self.__ops__.append(model.create_table)
         return model
 
     create_table = depricated_method(create_model, "create_table")
 
-    def remove_model(
-        self, model: Union[str, TModelType], *, cascade: bool = True, pw_db: bool = True
-    ):
+    def remove_model(self, model: Union[str, TModelType], *, cascade: bool = True):
         """Drop model and table from database.
 
         :param model: Model class or table name
         :param cascade(true): Drop table with cascade
-        :param pw_db(true): Drop table from database
 
         >> migrator.remove_model(Model, cascade=True)
         """
         model = self.__get_model__(model)
         self.orm.remove(model)
-        self.__process__(self.__migrator__.drop_table(model, cascade=cascade), db=pw_db)
+        self.__ops__.append(self.__migrator__.drop_table(model, cascade=cascade))
 
     drop_table = depricated_method(remove_model, "drop_table")
 
-    def add_fields(
-        self, model: Union[str, TModelType], *, pw_db: bool = True, **fields: pw.Field
-    ) -> TModelType:
+    def add_fields(self, model: Union[str, TModelType], **fields: pw.Field) -> TModelType:
         """Change fields.
 
         :param model: Model class or table name
-        :param pw_db(true): Change fields in database
 
         >> migrator.change_fields(Model, name=pw.CharField(null=True))
         """
@@ -164,8 +161,6 @@ class Migrator:
         meta = model._meta  # type: ignore[]
         for name, field in fields.items():
             meta.add_field(name, field)
-            if not pw_db:
-                continue
 
             self.__ops__.append(
                 self.__migrator__.add_column(  # type: ignore[]
@@ -180,13 +175,10 @@ class Migrator:
 
     add_columns = depricated_method(add_fields, "add_columns")
 
-    def change_fields(
-        self, model: Union[str, TModelType], *, pw_db: bool = True, **fields: pw.Field
-    ) -> TModelType:
+    def change_fields(self, model: Union[str, TModelType], **fields: pw.Field) -> TModelType:
         """Change fields.
 
         :param model: Model class or table name
-        :param pw_db(true): Change fields in database
 
         >> migrator.change_fields(Model, name=pw.CharField(null=True))
         """
@@ -198,41 +190,38 @@ class Migrator:
 
             meta.add_field(name, field)
 
-            if pw_db:
-                if isinstance(old_field, pw.ForeignKeyField):
-                    self.__ops__.append(
-                        self.__migrator__.drop_foreign_key_constraint(
-                            meta.table_name, old_column_name
-                        )
-                    )
-
-                if old_column_name != field.column_name:
-                    self.__ops__.append(
-                        self.__migrator__.rename_column(
-                            meta.table_name, old_column_name, field.column_name
-                        )
-                    )
-
-                if isinstance(field, pw.ForeignKeyField):
-                    on_delete = field.on_delete if field.on_delete else "RESTRICT"
-                    on_update = field.on_update if field.on_update else "RESTRICT"
-                    self.__ops__.append(
-                        self.__migrator__.add_foreign_key_constraint(
-                            meta.table_name,
-                            field.column_name,
-                            field.rel_model._meta.table_name,
-                            field.rel_field.name,
-                            on_delete,
-                            on_update,
-                        )
-                    )
-                    continue
-
+            if isinstance(old_field, pw.ForeignKeyField):
                 self.__ops__.append(
-                    self.__migrator__.change_column(  # type: ignore[]
-                        meta.table_name, field.column_name, field
+                    self.__migrator__.drop_foreign_key_constraint(meta.table_name, old_column_name)
+                )
+
+            if old_column_name != field.column_name:
+                self.__ops__.append(
+                    self.__migrator__.rename_column(
+                        meta.table_name, old_column_name, field.column_name
                     )
                 )
+
+            if isinstance(field, pw.ForeignKeyField):
+                on_delete = field.on_delete if field.on_delete else "RESTRICT"
+                on_update = field.on_update if field.on_update else "RESTRICT"
+                self.__ops__.append(
+                    self.__migrator__.add_foreign_key_constraint(
+                        meta.table_name,
+                        field.column_name,
+                        field.rel_model._meta.table_name,
+                        field.rel_field.name,
+                        on_delete,
+                        on_update,
+                    )
+                )
+                continue
+
+            self.__ops__.append(
+                self.__migrator__.change_column(  # type: ignore[]
+                    meta.table_name, field.column_name, field
+                )
+            )
 
             if field.unique == old_field.unique:
                 continue
@@ -240,25 +229,24 @@ class Migrator:
             if field.unique:
                 index = (field.column_name,), field.unique
                 meta.indexes.append(index)
-                self.__process__(self.__migrator__.add_index(meta.table_name, *index), db=pw_db)
+                self.__ops__.append(self.__migrator__.add_index(meta.table_name, *index))
             else:
                 index = field.column_name
                 with suppress(ValueError):
                     meta.indexes.remove(((field.column_name,), True))
-                self.__process__(self.__migrator__.drop_index(meta.table_name, index), db=pw_db)
+                self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index))
 
         return model
 
     change_columns = depricated_method(change_fields, "change_columns")
 
     def remove_fields(
-        self, model: Union[str, TModelType], *names: str, cascade: bool = True, pw_db: bool = True
+        self, model: Union[str, TModelType], *names: str, cascade: bool = True
     ) -> TModelType:
         """Remove fields from model.
 
         :param model: Model class or table name
         :param cascade(true): Drop columns with cascade
-        :param pw_db(true): Remove fields from Database
 
         >> migrator.remove_fields(Model, "name", "age", cascade=True)
         """
@@ -267,28 +255,26 @@ class Migrator:
         fields = [field for field in meta.fields.values() if field.name in names]
         for field in fields:
             self.__del_field__(model, field)
-            if pw_db:
-                if field.unique:
-                    index_name = make_index_name(meta.table_name, [field.column_name])
-                    self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index_name))
-                self.__ops__.append(
-                    self.__migrator__.drop_column(  # type: ignore[]
-                        meta.table_name, field.column_name, cascade=cascade
-                    )
+            if field.unique:
+                index_name = make_index_name(meta.table_name, [field.column_name])
+                self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index_name))
+            self.__ops__.append(
+                self.__migrator__.drop_column(  # type: ignore[]
+                    meta.table_name, field.column_name, cascade=cascade
                 )
+            )
         return model
 
     drop_columns = depricated_method(remove_fields, "drop_columns")
 
     def rename_field(
-        self, model: Union[str, TModelType], old_name: str, new_name: str, *, pw_db=True
+        self, model: Union[str, TModelType], old_name: str, new_name: str
     ) -> TModelType:
         """Rename field in model.
 
         :param model: Model class or table name
         :param old_name: Old field name
         :param new_name: New field name
-        :param pw_db(true): Rename field in Database
 
         >> migrator.rename_field(Model, "name", "full_name")
         """
@@ -302,8 +288,8 @@ class Migrator:
         if isinstance(field, pw.ForeignKeyField):
             field.column_name = field.column_name + "_id"
         meta.add_field(new_name, field)
-        self.__process__(
-            self.__migrator__.rename_column(meta.table_name, old_name, field.column_name), db=pw_db
+        self.__ops__.append(
+            self.__migrator__.rename_column(meta.table_name, old_name, field.column_name)
         )
         return model
 
@@ -322,9 +308,7 @@ class Migrator:
                 delattr(model, obj_id_name)
             delattr(field.rel_model, field.backref)
 
-    def rename_table(
-        self, model: Union[str, TModelType], new_name: str, *, pw_db=True
-    ) -> TModelType:
+    def rename_table(self, model: Union[str, TModelType], new_name: str) -> TModelType:
         """Rename table in database."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -332,12 +316,10 @@ class Migrator:
         self.orm.remove(model)
         meta.table_name = new_name
         self.orm.add(model)
-        self.__process__(self.__migrator__.rename_table(old_name, new_name), db=pw_db)
+        self.__ops__.append(self.__migrator__.rename_table(old_name, new_name))
         return model
 
-    def add_index(
-        self, model: Union[str, TModelType], *columns: str, unique=False, pw_db: bool = True
-    ) -> TModelType:
+    def add_index(self, model: Union[str, TModelType], *columns: str, unique=False) -> TModelType:
         """Create indexes."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -352,12 +334,10 @@ class Migrator:
 
             columns_.append(field.column_name)
 
-        self.__process__(
-            self.__migrator__.add_index(meta.table_name, columns_, unique=unique), db=pw_db
-        )
+        self.__ops__.append(self.__migrator__.add_index(meta.table_name, columns_, unique=unique))
         return model
 
-    def drop_index(self, model: Union[str, TModelType], *columns: str, pw_db=True) -> TModelType:
+    def drop_index(self, model: Union[str, TModelType], *columns: str) -> TModelType:
         """Drop indexes."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -374,62 +354,51 @@ class Migrator:
 
         index_name = make_index_name(meta.table_name, columns_)
         meta.indexes = [(cols, _) for (cols, _) in meta.indexes if columns != cols]
-        self.__process__(self.__migrator__.drop_index(meta.table_name, index_name), db=pw_db)
+        self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index_name))
         return model
 
-    def add_not_null(self, model: Union[str, TModelType], *names: str, pw_db=True) -> TModelType:
+    def add_not_null(self, model: Union[str, TModelType], *names: str) -> TModelType:
         """Add not null."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
         for name in names:
             field = meta.fields[name]
             field.null = False
-            self.__process__(
-                self.__migrator__.add_not_null(meta.table_name, field.column_name), db=pw_db
-            )
+            self.__ops__.append(self.__migrator__.add_not_null(meta.table_name, field.column_name))
         return model
 
-    def drop_not_null(self, model: Union[str, TModelType], *names: str, pw_db=True) -> TModelType:
+    def drop_not_null(self, model: Union[str, TModelType], *names: str) -> TModelType:
         """Drop not null."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
         for name in names:
             field = meta.fields[name]
             field.null = True
-            self.__process__(
-                self.__migrator__.drop_not_null(meta.table_name, field.column_name), db=pw_db
-            )
+            self.__ops__.append(self.__migrator__.drop_not_null(meta.table_name, field.column_name))
         return model
 
-    def add_default(
-        self, model: Union[str, TModelType], name: str, default: Any, *, pw_db=True
-    ) -> TModelType:
+    def add_default(self, model: Union[str, TModelType], name: str, default: Any) -> TModelType:
         """Add default."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
         field = meta.fields[name]
         meta.defaults[field] = field.default = default
-        self.__process__(self.__migrator__.apply_default(meta.table_name, name, field), db=pw_db)
+        self.__ops__.append(self.__migrator__.apply_default(meta.table_name, name, field))
         return model
 
-    def add_constraint(self, model: Union[str, TModelType], name, constraint, *, pw_db=True):
+    def add_constraint(self, model: Union[str, TModelType], name, constraint):
         """Add constraint."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
-        self.__process__(
-            self.__migrator__.add_constraint(meta.table_name, name, constraint), db=pw_db
-        )
+        self.__ops__.append(self.__migrator__.add_constraint(meta.table_name, name, constraint))
         return model
 
-    def drop_constraints(
-        self, model: Union[str, TModelType], *names: str, pw_db=True
-    ) -> TModelType:
+    def drop_constraints(self, model: Union[str, TModelType], *names: str) -> TModelType:
         """Drop constraints."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
-        self.__process__(
-            *[self.__migrator__.drop_constraint(meta.table_name, name) for name in names],
-            db=pw_db,
+        self.__ops__.extend(
+            [self.__migrator__.drop_constraint(meta.table_name, name) for name in names]
         )
         return model
 
@@ -554,3 +523,16 @@ class SqliteMigrator(SchemaMigrator, SqM):
             return ctx.query()[0]
 
         return [self._update_column(table, column, fn)]  # type: ignore[]
+
+
+class SyncContext:
+    def __init__(self, migrator):
+        self.migrator = migrator
+        self.ops = None
+
+    def __enter__(self):
+        self.ops = list(self.migrator.__ops__)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.migrator.__ops__ = self.ops

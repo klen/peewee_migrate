@@ -101,6 +101,26 @@ def test_migrator(router):  # noqa: PLR0915
     assert not Order._meta.indexes  # type: ignore[]
 
 
+def test_migrator_fake(migrator: Migrator):
+    @migrator.create_model
+    class Customer(pw.Model):
+        name = pw.CharField()
+
+    assert migrator.__ops__
+
+    migrator()
+
+    assert not migrator.__ops__
+
+    with migrator.fake():
+        migrator.add_fields("customer", is_blocked=pw.BooleanField(default=False))
+
+    assert not migrator.__ops__
+
+    snapshot = migrator.orm["customer"]
+    assert "is_blocked" in snapshot._meta.fields  # type: ignore[]
+
+
 @pytest.mark.parametrize("dburl", ["postgres:///fake"])
 def test_migrator_postgres(migrator, database):
     """
