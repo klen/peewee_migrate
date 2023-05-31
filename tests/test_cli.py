@@ -56,16 +56,18 @@ def test_create(dir_option, db_option):
         assert result.exit_code == 0
 
 
-def test_migrate(dir_option, db_option, migrations_str):
+def test_migrate(dir_option, db_option, migrations):
     result = runner.invoke(cli, ["migrate", dir_option, db_option])
     assert result.exit_code == 0
-    assert "Migrations completed: %s" % migrations_str in result.output
+    for mgr in migrations:
+        assert mgr in result.output
 
 
 def test_list(dir_option, db_option, migrations):
     result = runner.invoke(cli, ["list", dir_option, db_option])
-    assert "Migrations are done:\n" in result.output
-    assert "Migrations are undone:\n%s" % "\n".join(migrations) in result.output
+    assert "List of migrations" in result.output
+    for mgr in migrations:
+        assert mgr in result.output
 
 
 def test_rollback(dir_option, db_option, router, migrations):
@@ -90,9 +92,10 @@ def test_rollback(dir_option, db_option, router, migrations):
     assert router().done == migrations[:-4]
 
 
-def test_fake(dir_option, db_option, migrations_str, router):
+def test_fake(dir_option, db_option, migrations, router):
     result = runner.invoke(cli, ["migrate", dir_option, db_option, "-v", "--fake"])
     assert result.exit_code == 0
-    assert "Migrations completed: %s" % migrations_str in result.output
+    for mgr in migrations:
+        assert mgr in result.output
 
     # TODO: Find a way of testing fake. This is unclear why the following fails.

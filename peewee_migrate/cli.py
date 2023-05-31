@@ -92,9 +92,11 @@ def migrate(  # noqa:
 ):
     """Migrate database."""
     router = get_router(directory, database, migratetable, verbose)
-    migrations = router.run(name, fake=fake)
-    if migrations:
-        click.echo("Migrations completed: %s" % ", ".join(migrations))
+    click.secho("Migrating %s" % router.database.database, fg="blue")
+    for mgr in router.run(name, fake=fake):
+        click.echo("- [x] %s" % mgr)
+
+    click.echo("OK")
 
 
 @cli.command()
@@ -173,11 +175,14 @@ def list(  # noqa:
 ):
     """List migrations."""
     router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
-    click.echo("Migrations are done:")
-    click.echo("\n".join(router.done))
-    click.echo("")
-    click.echo("Migrations are undone:")
-    click.echo("\n".join(router.diff))
+    click.secho("List of migrations:\n", fg="blue")
+    for migration in router.done:
+        click.echo(f"- [x] {migration}")
+
+    for migration in router.diff:
+        click.echo(f"- [ ] {migration}")
+
+    click.secho(f"\nDone: {len(router.done)}, Pending: {len(router.diff)}", fg="blue")
 
 
 @cli.command()
