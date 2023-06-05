@@ -124,6 +124,7 @@ class Column(VanilaColumn):
             params["index"] = bool(params.pop("index", False)) or params["unique"]
             params.pop("on_delete", None)
             params.pop("on_update", None)
+            params["null"] = self.nullable
 
         elif self.field.default is not None and not callable(self.field.default):
             params["default"] = repr(self.field.db_value(self.field.default))

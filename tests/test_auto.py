@@ -263,3 +263,19 @@ def test_update_fk(migrator):
 
     res = compare_fields(Test2.test, Test3.test)
     assert not res
+
+
+def test_update_null(migrator):
+    class Test(pw.Model):
+        pass
+
+    class Test2(pw.Model):
+        test = pw.ForeignKeyField(Test, null=True)
+
+    class Test3(pw.Model):
+        test = pw.ForeignKeyField(Test, null=False)
+
+    from peewee_migrate.auto import compare_fields
+
+    res = compare_fields(Test3.test, Test2.test)
+    assert res
