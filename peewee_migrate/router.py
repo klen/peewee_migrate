@@ -45,6 +45,7 @@ class BaseRouter(object):
         ignore: Optional[Iterable[str]] = None,
         schema: Optional[str] = None,
         logger: Logger = logger,
+        migrator_class: Type[Migrator] = Migrator
     ):
         """Initialize the router."""
         self.database = database
@@ -52,8 +53,11 @@ class BaseRouter(object):
         self.schema = schema
         self.ignore = ignore
         self.logger = logger
+        self.migrator_class = migrator_class
         if not isinstance(self.database, (pw.Database, pw.Proxy)):
             raise TypeError("Invalid database: %s" % database)
+        if not issubclass(self.migrator_class, Migrator):
+            raise TypeError("Invalid migrator_class: %s" % database)
 
     @cached_property
     def model(self) -> Type[MigrateHistory]:
@@ -84,7 +88,7 @@ class BaseRouter(object):
     @cached_property
     def migrator(self) -> Migrator:
         """Create migrator and setup it with fake migrations."""
-        migrator = Migrator(self.database)
+        migrator = self.migrator_class(self.database)
         for name in self.done:
             self.run_one(name, migrator)
         return migrator
