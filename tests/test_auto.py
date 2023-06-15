@@ -18,7 +18,7 @@ from playhouse.postgres_ext import (
 CURDIR = Path(__file__).parent
 
 
-def test_auto():
+def test_auto_base():
     from peewee_migrate.auto import diff_many, diff_one, model_to_code
     from peewee_migrate.cli import get_router
 
@@ -98,6 +98,36 @@ def test_auto_multi_column_index():
     assert "indexes = [(('first_name', 'last_name'), True)]" in code
 
 
+def test_auto_self_referencing_foreign_key_on_model_create():
+    from peewee_migrate.auto import field_to_code
+
+    class Employee(pw.Model):
+        manager = pw.ForeignKeyField("self")
+
+    code = field_to_code(Employee.manager)
+    assert "model='self'" in code
+
+
+def test_auto_default():
+    from peewee_migrate.auto import field_to_code
+
+    from .models import Person
+
+    code = field_to_code(Person.is_deleted)
+    assert code == "is_deleted = pw.BooleanField(default=False)"
+
+
+def test_auto_on_update_on_delete():
+    from peewee_migrate.auto import field_to_code
+
+    class Employee(pw.Model):
+        manager = pw.ForeignKeyField("self", on_update="CASCADE", on_delete="CASCADE")
+
+    code = field_to_code(Employee.manager)
+    assert "on_update='CASCADE'" in code
+    assert "on_delete='CASCADE'" in code
+
+
 def test_diff_multi_column_index():
     from peewee_migrate.auto import diff_one
 
@@ -144,17 +174,18 @@ def test_diff_multi_column_index():
     )
 
 
-def test_self_referencing_foreign_key_on_model_create():
-    from peewee_migrate.auto import field_to_code
+def test_diff_default():
+    from peewee_migrate.auto import compare_fields
 
-    class Employee(pw.Model):
-        manager = pw.ForeignKeyField("self")
+    class Object(pw.Model):
+        f1 = pw.BooleanField(default=True)
+        f2 = pw.BooleanField(default=False)
 
-    code = field_to_code(Employee.manager)
-    assert "model='self'" in code
+    res = compare_fields(Object.f1, Object.f2)
+    assert res
 
 
-def test_self_referencing_foreign_key_on_field_added():
+def test_diff_self_referencing_foreign_key_on_field_added():
     from peewee_migrate.auto import diff_one
 
     class Employee(pw.Model):
@@ -167,26 +198,6 @@ def test_self_referencing_foreign_key_on_field_added():
     changes = diff_one(EmployeeNew, Employee)
     assert "migrator.add_fields" in changes[0]
     assert "model='self'" in changes[0]
-
-
-def test_column_default():
-    from peewee_migrate.auto import field_to_code
-
-    from .models import Person
-
-    code = field_to_code(Person.is_deleted)
-    assert code == "is_deleted = pw.BooleanField(default=False)"
-
-
-def test_on_update_on_delete():
-    from peewee_migrate.auto import field_to_code
-
-    class Employee(pw.Model):
-        manager = pw.ForeignKeyField("self", on_update="CASCADE", on_delete="CASCADE")
-
-    code = field_to_code(Employee.manager)
-    assert "on_update='CASCADE'" in code
-    assert "on_delete='CASCADE'" in code
 
 
 def test_custom_fields():
@@ -249,7 +260,7 @@ def test_custom_fields2():
     assert code == "enum_field = pw.CharField(default='a', max_length=255)"
 
 
-def test_update_fk(migrator):
+def test_diff_fk_on_delete(migrator):
     class Test(pw.Model):
         pass
 
@@ -265,7 +276,7 @@ def test_update_fk(migrator):
     assert not res
 
 
-def test_update_null(migrator):
+def test_diff_null(migrator):
     class Test(pw.Model):
         pass
 

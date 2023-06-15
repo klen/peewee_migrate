@@ -126,7 +126,7 @@ class Column(VanilaColumn):
             params.pop("on_update", None)
             params["null"] = self.nullable
 
-        elif self.field.default is not None and not callable(self.field.default):
+        if self.field.default is not None and not callable(self.field.default):
             params["default"] = repr(self.field.db_value(self.field.default))
 
         return params
