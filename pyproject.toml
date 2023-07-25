@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "peewee-migrate"
-version = "1.11.1"
+version = "1.12.0"
 homepage = "https://github.com/klen/peewee_migrate"
 repository = "https://github.com/klen/peewee_migrate"
 description = "Support for migrations in Peewee ORM"
