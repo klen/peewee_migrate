@@ -181,9 +181,8 @@ class BaseRouter(object):
             if fake:
                 mocked_cursor = mock.Mock()
                 mocked_cursor.fetch_one.return_value = None
-                with (  # type: ignore[attr-defined]  # py38
-                    mock.patch("peewee.Model.select"),
-                    mock.patch("peewee.Database.execute_sql", return_value=mocked_cursor),
+                with mock.patch("peewee.Model.select"), mock.patch(
+                    "peewee.Database.execute_sql", return_value=mocked_cursor
                 ):
                     migrate(migrator, self.database, fake=fake)
 
