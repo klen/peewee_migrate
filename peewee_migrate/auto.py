@@ -132,7 +132,7 @@ class Column(VanilaColumn):
         return params
 
 
-def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # noqa:
+def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # noqa: C901
     """Find difference between given peewee models."""
     changes = []
 
@@ -191,15 +191,19 @@ def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # 
 
     # Drop compound indexes
     indexes_to_drop = set(indexes2) - set(indexes1)
-    for index in indexes_to_drop:
-        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1:
-            changes.append(drop_index(model1, name=index[0]))
+    changes.extend(
+        drop_index(model1, name=index[0])
+        for index in indexes_to_drop
+        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1
+    )
 
     # Add compound indexes
     indexes_to_add = set(indexes1) - set(indexes2)
-    for index in indexes_to_add:
-        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1:
-            changes.append(add_index(model1, name=index[0], unique=index[1]))
+    changes.extend(
+        add_index(model1, name=index[0], unique=index[1])
+        for index in indexes_to_add
+        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1
+    )
 
     return changes
 
@@ -230,12 +234,15 @@ def diff_many(
         changes.extend(diff_one(model1, models_map2[name], migrator=migrator))
 
     # Add models
-    for name in [m for m in models_map1 if m not in models_map2]:
-        changes.append(create_model(models_map1[name], migrator=migrator))
+    changes.extend(
+        create_model(models_map1[name], migrator=migrator)
+        for name in [m for m in models_map1 if m not in models_map2]
+    )
 
     # Remove models
-    for name in [m for m in models_map2 if m not in models_map1]:
-        changes.append(remove_model(models_map2[name]))
+    changes.extend(
+        remove_model(models_map2[name]) for name in [m for m in models_map2 if m not in models_map1]
+    )
 
     return changes
 

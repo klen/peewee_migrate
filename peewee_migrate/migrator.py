@@ -116,9 +116,11 @@ class Migrator:
         op = cast(Operation, self.__migrator__.sql(sql, *params))
         self.__ops__.append(op)
 
-    def python(self, func: Callable, *args, **kwargs):
+    def run(self, func: Callable, *args, **kwargs):
         """Run a python function."""
         self.__ops__.append(lambda: func(*args, **kwargs))
+
+    python = depricated_method(run, "python")
 
     def create_model(self, model: TVModelType) -> TVModelType:
         """Create model and table in database.

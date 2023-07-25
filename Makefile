@@ -1,4 +1,5 @@
 VIRTUAL_ENV	?= .venv
+PACKAGE = peewee_migrate
 
 all: $(VIRTUAL_ENV)
 
@@ -16,8 +17,9 @@ $(VIRTUAL_ENV): pyproject.toml
 t test: $(VIRTUAL_ENV)
 	@poetry run pytest -xsv --mypy tests
 
-mypy: $(VIRTUAL_ENV)
+lint: $(VIRTUAL_ENV)
 	@poetry run mypy
+	@poetry run ruff $(PACKAGE)
 
 v:
 	@poetry version -s

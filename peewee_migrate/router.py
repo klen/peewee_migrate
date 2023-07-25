@@ -38,14 +38,14 @@ def void(m, d, fake=None):
 class BaseRouter(object):
     """Abstract base class for router."""
 
-    def __init__(  # noqa:
+    def __init__(  # noqa: PLR0913
         self,
         database: Union[pw.Database, pw.Proxy],
         migrate_table=MIGRATE_TABLE,
         ignore: Optional[Iterable[str]] = None,
         schema: Optional[str] = None,
         logger: Logger = logger,
-        migrator_class: Type[Migrator] = Migrator
+        migrator_class: Type[Migrator] = Migrator,
     ):
         """Initialize the router."""
         self.database = database
@@ -156,7 +156,7 @@ class BaseRouter(object):
         """Clear migrations."""
         self.model.delete().execute()
 
-    def compile(  # noqa:
+    def compile(  # noqa: A003
         self, name: str, migrate: str = "", rollback: str = "", num: Optional[int] = None
     ) -> str:
         """Create a migration."""
@@ -166,7 +166,7 @@ class BaseRouter(object):
         """Read migration from file."""
         raise NotImplementedError
 
-    def run_one(
+    def run_one(  # noqa: PLR0913
         self,
         name: str,
         migrator: Migrator,
@@ -181,8 +181,9 @@ class BaseRouter(object):
             if fake:
                 mocked_cursor = mock.Mock()
                 mocked_cursor.fetch_one.return_value = None
-                with mock.patch("peewee.Model.select"), mock.patch(
-                    "peewee.Database.execute_sql", return_value=mocked_cursor
+                with (
+                    mock.patch("peewee.Model.select"),
+                    mock.patch("peewee.Database.execute_sql", return_value=mocked_cursor),
                 ):
                     migrate(migrator, self.database, fake=fake)
 
@@ -272,7 +273,7 @@ class Router(BaseRouter):
             self.migrate_dir.mkdir(parents=True)
         return sorted(f[:-3] for f in os.listdir(self.migrate_dir) if self.filemask.match(f))
 
-    def compile(self, name, migrate="", rollback="", num=None) -> str:  # noqa:
+    def compile(self, name, migrate="", rollback="", num=None) -> str:  # noqa: A003
         """Create a migration."""
         if num is None:
             num = len(self.todo)

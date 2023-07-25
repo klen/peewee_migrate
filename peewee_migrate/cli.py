@@ -82,13 +82,14 @@ def cli():
 @click.option("--fake", is_flag=True, default=False, help="Run migration as fake.")
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
-def migrate(  # noqa:
+def migrate(  # noqa: PLR0913
     name: Optional[str] = None,
     database: Optional[str] = None,
     directory: Optional[str] = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
-    fake: bool = False,  # noqa:
+    *,
+    fake: bool = False,
 ):
     """Migrate database."""
     router = get_router(directory, database, migratetable, verbose)
@@ -119,13 +120,14 @@ def migrate(  # noqa:
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
-def create(  # noqa:
+def create(  # noqa: PLR0913
     name: Optional[str] = None,
     database: Optional[str] = None,
     directory: Optional[str] = None,
     migratetable: Optional[str] = None,
     verbose: int = 0,
-    auto: bool = False,  # noqa:
+    *,
+    auto: bool = False,
     auto_source: Optional[str] = None,
 ):
     """Create a migration."""
@@ -167,7 +169,7 @@ def rollback(
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
-def list(  # noqa:
+def list(  # noqa: A001
     database: Optional[str] = None,
     directory: Optional[str] = None,
     migratetable: Optional[str] = None,
