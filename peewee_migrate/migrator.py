@@ -169,10 +169,6 @@ class Migrator:
                     meta.table_name, field.column_name, field
                 )
             )
-            if field.unique:
-                self.__ops__.append(
-                    self.__migrator__.add_index(meta.table_name, (field.column_name,), unique=True)
-                )
         return model
 
     add_columns = depricated_method(add_fields, "add_columns")
