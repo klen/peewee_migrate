@@ -71,7 +71,6 @@ def test_auto_postgresext():
     class Object(pw.Model):
         array_field = ArrayField()
         binary_json_field = BinaryJSONField()
-        binary_json_field_with_default = BinaryJSONField(default={})
         dattime_tz_field = DateTimeTZField()
         hstore_field = HStoreField()
         interval_field = IntervalField()
@@ -81,7 +80,6 @@ def test_auto_postgresext():
     code = model_to_code(Object)
     assert code
     assert "json_field = pw_pext.JSONField()" in code
-    assert "binary_json_field_with_default = pw_pext.BinaryJSONField(default={}, index=True)" in code
     assert "hstore_field = pw_pext.HStoreField(index=True)" in code
 
 

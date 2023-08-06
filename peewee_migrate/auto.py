@@ -127,11 +127,7 @@ class Column(VanilaColumn):
             params["null"] = self.nullable
 
         if self.field.default is not None and not callable(self.field.default):
-            value = self.field.db_value(self.field.default)
-            if isinstance(value, pw.Cast):
-                params["default"] = value.node
-            else:
-                params["default"] = repr(value)
+            params["default"] = repr(self.field.db_value(self.field.default))
 
         return params
 
