@@ -16,6 +16,7 @@ from typing import (
 )
 
 import peewee as pw
+from playhouse import postgres_ext
 from playhouse.reflection import Column as VanilaColumn
 
 if TYPE_CHECKING:
@@ -57,6 +58,17 @@ def dtf_to_params(field: pw.DateTimeField) -> TParams:
     return params
 
 
+def arrayf_to_params(f: postgres_ext.ArrayField):
+        inner_field: pw.Field = f._ArrayField__field
+        module = FIELD_MODULES_MAP.get(inner_field.__class__.__name__, "pw")
+        return {
+            "field_class": f"{module}.{inner_field.__class__.__name__}",
+            "field_kwargs": repr(Column(inner_field).get_field_parameters()),
+            "dimensions": f.dimensions,
+            "convert_values": f.convert_values
+        }
+
+
 FIELD_TO_PARAMS: Dict[Type[pw.Field], Callable[[Any], TParams]] = {
     pw.CharField: lambda f: {"max_length": f.max_length},
     pw.DecimalField: lambda f: {
@@ -67,6 +79,7 @@ FIELD_TO_PARAMS: Dict[Type[pw.Field], Callable[[Any], TParams]] = {
     },
     pw.ForeignKeyField: fk_to_params,
     pw.DateTimeField: dtf_to_params,
+    postgres_ext.ArrayField: arrayf_to_params,
 }
 
 
@@ -127,7 +140,11 @@ class Column(VanilaColumn):
             params["null"] = self.nullable
 
         if self.field.default is not None and not callable(self.field.default):
-            params["default"] = repr(self.field.db_value(self.field.default))
+            value = self.field.db_value(self.field.default)
+            if isinstance(value, pw.WrappedNode):
+                params["default"] = str(value.node)
+            else:
+                params["default"] = repr(value)
 
         return params
 
