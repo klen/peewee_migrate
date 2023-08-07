@@ -40,6 +40,7 @@ Dependency Note
 - For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``
 - For ``Python 3.0-3.6`` please use ``Peewee-Migrate==1.1.6``
 - For ``Python 3.7`` please use ``Peewee-Migrate==1.6.6``
+- For ``Python 3.8+`` please use ``Peewee-Migrate>=1.12.1``
 
 .. _installation:
 
