@@ -169,6 +169,7 @@ class Migrator:
                     meta.table_name, field.column_name, field
                 )
             )
+
         return model
 
     add_columns = depricated_method(add_fields, "add_columns")
