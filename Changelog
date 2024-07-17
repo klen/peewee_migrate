@@ -1,3 +1,6 @@
+2024-07-17
+	* feat: add support for python 3.12
+
 2023-03-23 klen
 
 	* feat: add support for python 3.10, 3.11
