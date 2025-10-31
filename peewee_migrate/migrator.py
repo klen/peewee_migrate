@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, cast, overload
 
 import peewee as pw
 from playhouse.migrate import (
@@ -21,8 +21,6 @@ from playhouse.migrate import PostgresqlMigrator as PgM
 from playhouse.migrate import SchemaMigrator as ScM
 from playhouse.migrate import SqliteMigrator as SqM
 
-from peewee_migrate.utils import depricated_method
-
 from .logs import logger
 
 if TYPE_CHECKING:
@@ -30,11 +28,11 @@ if TYPE_CHECKING:
 
 
 class ORM:
-    __slots__ = ("__tables__", "__models__")
+    __slots__ = ("__models__", "__tables__")
 
     def __init__(self: ORM):
-        self.__tables__: Dict[str, TModelType] = {}
-        self.__models__: Dict[str, TModelType] = {}
+        self.__tables__: dict[str, TModelType] = {}
+        self.__models__: dict[str, TModelType] = {}
 
     def add(self, model: TModelType):
         self.__models__[model.__name__] = model
@@ -57,7 +55,7 @@ class ORM:
 class Migrator:
     """Provide migrations."""
 
-    def __init__(self, database: Union[pw.Database, pw.Proxy]):
+    def __init__(self, database: pw.Database | pw.Proxy):
         """Initialize the migrator."""
         self.orm: ORM = ORM()
 
@@ -65,7 +63,7 @@ class Migrator:
             database = database.obj
 
         self.__database__ = database
-        self.__ops__: List[Union[Operation, Callable]] = []
+        self.__ops__: list[Operation | Callable] = []
         self.__migrator__ = SchemaMigrator.from_database(database)
 
     def __call__(self):
@@ -92,14 +90,12 @@ class Migrator:
         return SyncContext(self)
 
     @overload
-    def __get_model__(self, model: TVModelType) -> TVModelType:
-        ...
+    def __get_model__(self, model: TVModelType) -> TVModelType: ...
 
     @overload
-    def __get_model__(self, model: str) -> TModelType:
-        ...
+    def __get_model__(self, model: str) -> TModelType: ...
 
-    def __get_model__(self, model: Union[TVModelType, str]) -> Union[TVModelType, TModelType]:
+    def __get_model__(self, model: TVModelType | str) -> TVModelType | TModelType:
         """Get model by name."""
         if isinstance(model, str):
             if model in self.orm.__models__:
@@ -113,14 +109,12 @@ class Migrator:
 
     def sql(self, sql: str, *params):
         """Execute raw SQL."""
-        op = cast(Operation, self.__migrator__.sql(sql, *params))
+        op = cast("Operation", self.__migrator__.sql(sql, *params))
         self.__ops__.append(op)
 
     def run(self, func: Callable, *args, **kwargs):
         """Run a python function."""
         self.__ops__.append(lambda: func(*args, **kwargs))
-
-    python = depricated_method(run, "python")
 
     def create_model(self, model: TVModelType) -> TVModelType:
         """Create model and table in database.
@@ -136,9 +130,7 @@ class Migrator:
         self.__ops__.append(model.create_table)
         return model
 
-    create_table = depricated_method(create_model, "create_table")
-
-    def remove_model(self, model: Union[str, TModelType], *, cascade: bool = True):
+    def remove_model(self, model: str | TModelType, *, cascade: bool = True):
         """Drop model and table from database.
 
         :param model: Model class or table name
@@ -150,9 +142,7 @@ class Migrator:
         self.orm.remove(model)
         self.__ops__.append(self.__migrator__.drop_table(model, cascade=cascade))
 
-    drop_table = depricated_method(remove_model, "drop_table")
-
-    def add_fields(self, model: Union[str, TModelType], **fields: pw.Field) -> TModelType:
+    def add_fields(self, model: str | TModelType, **fields: pw.Field) -> TModelType:
         """Change fields.
 
         :param model: Model class or table name
@@ -172,9 +162,7 @@ class Migrator:
 
         return model
 
-    add_columns = depricated_method(add_fields, "add_columns")
-
-    def change_fields(self, model: Union[str, TModelType], **fields: pw.Field) -> TModelType:
+    def change_fields(self, model: str | TModelType, **fields: pw.Field) -> TModelType:
         """Change fields.
 
         :param model: Model class or table name
@@ -237,10 +225,8 @@ class Migrator:
 
         return model
 
-    change_columns = depricated_method(change_fields, "change_columns")
-
     def remove_fields(
-        self, model: Union[str, TModelType], *names: str, cascade: bool = True
+        self, model: str | TModelType, *names: str, cascade: bool = True, **params
     ) -> TModelType:
         """Remove fields from model.
 
@@ -257,18 +243,15 @@ class Migrator:
             if field.unique:
                 index_name = make_index_name(meta.table_name, [field.column_name])
                 self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index_name))
+
             self.__ops__.append(
                 self.__migrator__.drop_column(  # type: ignore[]
-                    meta.table_name, field.column_name, cascade=cascade
+                    meta.table_name, field.column_name, cascade=cascade, **params
                 )
             )
         return model
 
-    drop_columns = depricated_method(remove_fields, "drop_columns")
-
-    def rename_field(
-        self, model: Union[str, TModelType], old_name: str, new_name: str
-    ) -> TModelType:
+    def rename_field(self, model: str | TModelType, old_name: str, new_name: str) -> TModelType:
         """Rename field in model.
 
         :param model: Model class or table name
@@ -292,8 +275,6 @@ class Migrator:
         )
         return model
 
-    rename_column = depricated_method(rename_field, "rename_column")
-
     def __del_field__(self, model: TModelType, field: pw.Field):
         """Delete field from model."""
         meta = model._meta  # type: ignore[]
@@ -307,7 +288,7 @@ class Migrator:
                 delattr(model, obj_id_name)
             delattr(field.rel_model, field.backref)
 
-    def rename_table(self, model: Union[str, TModelType], new_name: str) -> TModelType:
+    def rename_table(self, model: str | TModelType, new_name: str) -> TModelType:
         """Rename table in database."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -318,7 +299,7 @@ class Migrator:
         self.__ops__.append(self.__migrator__.rename_table(old_name, new_name))
         return model
 
-    def add_index(self, model: Union[str, TModelType], *columns: str, unique=False) -> TModelType:
+    def add_index(self, model: str | TModelType, *columns: str, unique=False) -> TModelType:
         """Create indexes."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -336,7 +317,7 @@ class Migrator:
         self.__ops__.append(self.__migrator__.add_index(meta.table_name, columns_, unique=unique))
         return model
 
-    def drop_index(self, model: Union[str, TModelType], *columns: str) -> TModelType:
+    def drop_index(self, model: str | TModelType, *columns: str) -> TModelType:
         """Drop indexes."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -356,7 +337,7 @@ class Migrator:
         self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index_name))
         return model
 
-    def add_not_null(self, model: Union[str, TModelType], *names: str) -> TModelType:
+    def add_not_null(self, model: str | TModelType, *names: str) -> TModelType:
         """Add not null."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -366,7 +347,7 @@ class Migrator:
             self.__ops__.append(self.__migrator__.add_not_null(meta.table_name, field.column_name))
         return model
 
-    def drop_not_null(self, model: Union[str, TModelType], *names: str) -> TModelType:
+    def drop_not_null(self, model: str | TModelType, *names: str) -> TModelType:
         """Drop not null."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -376,7 +357,7 @@ class Migrator:
             self.__ops__.append(self.__migrator__.drop_not_null(meta.table_name, field.column_name))
         return model
 
-    def add_default(self, model: Union[str, TModelType], name: str, default: Any) -> TModelType:
+    def add_default(self, model: str | TModelType, name: str, default: Any) -> TModelType:
         """Add default."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -385,14 +366,14 @@ class Migrator:
         self.__ops__.append(self.__migrator__.apply_default(meta.table_name, name, field))
         return model
 
-    def add_constraint(self, model: Union[str, TModelType], name, constraint):
+    def add_constraint(self, model: str | TModelType, name, constraint):
         """Add constraint."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
         self.__ops__.append(self.__migrator__.add_constraint(meta.table_name, name, constraint))
         return model
 
-    def drop_constraints(self, model: Union[str, TModelType], *names: str) -> TModelType:
+    def drop_constraints(self, model: str | TModelType, *names: str) -> TModelType:
         """Drop constraints."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -406,7 +387,7 @@ class SchemaMigrator(ScM):
     """Implement migrations."""
 
     @classmethod
-    def from_database(cls, database: Union[pw.Database, pw.Proxy]) -> SchemaMigrator:
+    def from_database(cls, database: pw.Database | pw.Proxy) -> SchemaMigrator:  # type: ignore[]
         """Initialize migrator by db."""
         if isinstance(database, PostgresqlDatabase):
             return PostgresqlMigrator(database)
@@ -431,11 +412,9 @@ class SchemaMigrator(ScM):
     @operation
     def change_column(
         self, table: str, column_name: str, field: pw.Field
-    ) -> List[Union[Context, Operation]]:
+    ) -> list[Context | Operation]:
         """Change column."""
-        operations: List[Union[Context, Operation]] = self.alter_change_column(
-            table, column_name, field
-        )
+        operations: list[Context | Operation] = self.alter_change_column(table, column_name, field)
         if not field.null:
             operations.append(self.add_not_null(table, column_name))
         return operations
@@ -449,9 +428,18 @@ class SchemaMigrator(ScM):
         ctx: pw.Context = alter_column.literal(" SET DEFAULT ")
         return ctx.sql(field.db_value(default))
 
+    @operation
+    def add_index(self, table, columns, unique=False, using=None, where=None):  # noqa: FBT002
+        ctx = self.make_context()
+        index_name = make_index_name(table, columns)
+        table_obj = pw.Table(table)
+        cols = [getattr(table_obj.c, column) for column in columns]
+        index = pw.Index(index_name, table_obj, cols, unique=unique, using=using, where=where)
+        return ctx.sql(index)
+
     def alter_change_column(
         self, table: str, column: str, field: pw.Field
-    ) -> List[Union[Context, Operation]]:
+    ) -> list[Context | Operation]:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
@@ -475,7 +463,7 @@ class MySQLMigrator(SchemaMigrator, MqM):
 
     def alter_change_column(
         self, table: str, column: str, field: pw.Field
-    ) -> List[Union[Context, Operation]]:
+    ) -> list[Context | Operation]:
         """Support change columns."""
         ctx = self.make_context()
         field_null, field.null = field.null, True
@@ -489,7 +477,7 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 
     def alter_change_column(
         self, table: str, column: str, field: pw.Field
-    ) -> List[Union[Context, Operation]]:
+    ) -> list[Context | Operation]:
         """Support change columns."""
         ctx = self.make_context()
         fn, field.null = field.null, True
@@ -507,13 +495,13 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 class SqliteMigrator(SchemaMigrator, SqM):
     """Support the migrations in sqlite."""
 
-    def drop_table(self, model: pw.Model, *, cascade: bool = True) -> Callable:
+    def drop_table(self, model: TModelType, *, cascade: bool = True) -> Callable:
         """Sqlite doesnt support cascade syntax by default."""
         return lambda: model.drop_table(cascade=False)
 
     def alter_change_column(
         self, table: str, column: str, field: pw.Field
-    ) -> List[Union[Operation, Context]]:
+    ) -> list[Operation | Context]:
         """Support change columns."""
 
         def fn(c_name, c_def):

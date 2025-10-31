@@ -32,7 +32,7 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 Requirements
 =============
 
-- peewee >= 3.8
+- peewee >= 3.10
 
 Dependency Note
 ---------------
@@ -40,7 +40,8 @@ Dependency Note
 - For ``Peewee<3.0`` please use ``Peewee-Migrate==0.14.0``
 - For ``Python 3.0-3.6`` please use ``Peewee-Migrate==1.1.6``
 - For ``Python 3.7`` please use ``Peewee-Migrate==1.6.6``
-- For ``Python 3.8+`` please use ``Peewee-Migrate>=1.12.1``
+- For ``Python 3.8, 3.9`` please use ``Peewee-Migrate>=1.13.0``
+- For ``Python 3.10+`` please use ``Peewee-Migrate>=1.14+``
 
 .. _installation:
 

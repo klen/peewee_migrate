@@ -1,4 +1,5 @@
 import peewee as pw
+
 from .base_model import BaseModel
 
 

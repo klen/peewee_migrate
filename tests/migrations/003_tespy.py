@@ -1,6 +1,5 @@
 """Peewee migrations."""
 
-import datetime as dt
 import peewee as pw
 
 
@@ -26,10 +25,10 @@ def migrate(migrator, database, **kwargs):
     > migrator.add_default(Model, field_name, default)
 
     """
-    migrator.rename_field('tag', 'created_at', 'updated_at')
-    migrator.add_fields('person', is_deleted=pw.BooleanField(default=False))
+    migrator.rename_field("tag", "created_at", "updated_at")
+    migrator.add_fields("person", is_deleted=pw.BooleanField(default=False))
 
 
 def rollback(migrator, database, **kwargs):
-    migrator.rename_field('tag', 'updated_at', 'created_at')
-    migrator.remove_fields('person', 'is_deleted')
+    migrator.rename_field("tag", "updated_at", "created_at")
+    migrator.remove_fields("person", "is_deleted")

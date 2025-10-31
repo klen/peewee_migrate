@@ -1,4 +1,5 @@
 """Tests for `peewee_migrate` module."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,13 +7,16 @@ from unittest import mock
 
 import peewee as pw
 
+from peewee_migrate.cli import get_router
+from peewee_migrate.models import MigrateHistory
+from peewee_migrate.router import load_models
+
+from .test_autodiscover.models1 import one_models
+
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
 def test_router():
-    from peewee_migrate.cli import get_router
-    from peewee_migrate.models import MigrateHistory
-
     class Dummy(pw.Model):
         id = pw.AutoField()
 
@@ -73,15 +77,11 @@ def test_router():
 
     (MIGRATIONS_DIR / "001_initial.py").unlink()
 
-    from peewee_migrate.router import load_models
-
     models = load_models("tests.test_autodiscover")
     assert models
 
     models = load_models("tests.test_autodiscover")
     assert models
-
-    from .test_autodiscover.some_folder_one import one_models
 
     models = load_models(one_models)
     assert models
@@ -91,8 +91,6 @@ def test_router():
 
 
 def test_router_compile(tmpdir):
-    from peewee_migrate.cli import get_router
-
     migrations = tmpdir.mkdir("migrations")
     router = get_router(str(migrations), "sqlite:///:memory:")
     router.compile("test_router_compile")

@@ -1,23 +1,14 @@
 """Automatically create migrations."""
+
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Optional,
-    Type,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Final, cast
 
 import peewee as pw
-from playhouse import postgres_ext
+from playhouse import postgres_ext  # type: ignore[]
 from playhouse.reflection import Column as VanilaColumn
+
+from peewee_migrate.utils import model_fields_gen
 
 if TYPE_CHECKING:
     from .migrator import Migrator
@@ -59,17 +50,17 @@ def dtf_to_params(field: pw.DateTimeField) -> TParams:
 
 
 def arrayf_to_params(f: postgres_ext.ArrayField):
-        inner_field: pw.Field = f._ArrayField__field
-        module = FIELD_MODULES_MAP.get(inner_field.__class__.__name__, "pw")
-        return {
-            "field_class": f"{module}.{inner_field.__class__.__name__}",
-            "field_kwargs": repr(Column(inner_field).get_field_parameters()),
-            "dimensions": f.dimensions,
-            "convert_values": f.convert_values
-        }
+    inner_field: pw.Field = f._ArrayField__field
+    module = FIELD_MODULES_MAP.get(inner_field.__class__.__name__, "pw")
+    return {
+        "field_class": f"{module}.{inner_field.__class__.__name__}",
+        "field_kwargs": repr(Column(inner_field).get_field_parameters()),
+        "dimensions": f.dimensions,
+        "convert_values": f.convert_values,
+    }
 
 
-FIELD_TO_PARAMS: Dict[Type[pw.Field], Callable[[Any], TParams]] = {
+FIELD_TO_PARAMS: dict[type[pw.Field], Callable[[Any], TParams]] = {
     pw.CharField: lambda f: {"max_length": f.max_length},
     pw.DecimalField: lambda f: {
         "auto_round": f.auto_round,
@@ -86,7 +77,7 @@ FIELD_TO_PARAMS: Dict[Type[pw.Field], Callable[[Any], TParams]] = {
 class Column(VanilaColumn):
     """Get field's migration parameters."""
 
-    field_class: Type[pw.Field]
+    field_class: type[pw.Field]
 
     def __init__(self, field: pw.Field, **kwargs):
         super(Column, self).__init__(
@@ -149,116 +140,116 @@ class Column(VanilaColumn):
         return params
 
 
-def diff_one(model1: TModelType, model2: TModelType, **kwargs) -> List[str]:  # noqa: C901
+def diff_model(model: TModelType, source: TModelType, **opts) -> list[str]:
     """Find difference between given peewee models."""
+    if model._meta.table_name != source._meta.table_name:  # type: ignore[]
+        raise ValueError("Cannot diff models with different table names")  # noqa: EM101, TRY003
+
+    return [*diff_model_fields(model, source, **opts), *diff_model_indexes(model, source)]
+
+
+def diff_model_fields(model: TModelType, source: TModelType, **opts) -> list[str]:
     changes = []
 
-    meta1, meta2 = model1._meta, model2._meta  # type: ignore[]
-    field_names1 = meta1.fields
-    field_names2 = meta2.fields
+    model_fields = {f.name for f in model._meta.sorted_fields}  # type: ignore[]
+    source_fields = {f.name for f in source._meta.sorted_fields}  # type: ignore[]
 
     # Add fields
-    names1 = set(field_names1) - set(field_names2)
-    if names1:
-        fields = [field_names1[name] for name in names1]
-        changes.append(create_fields(model1, *fields, **kwargs))
+    fields_to_add = model_fields - source_fields
+    if fields_to_add:
+        fields = list(model_fields_gen(model, *fields_to_add))
+        changes.append(create_fields(model, *fields, **opts))
 
     # Drop fields
-    names2 = set(field_names2) - set(field_names1)
-    if names2:
-        changes.append(drop_fields(model1, *names2))
+    fields_to_remove = source_fields - model_fields
+    if fields_to_remove:
+        fields = list(model_fields_gen(source, *fields_to_remove))
+        changes.append(drop_fields(model, *fields))
 
     # Change fields
-    fields_to_change = []
-    fields_nulls = []
-    fields_indexes = []
-    for name in set(field_names1) - names1 - names2:
-        field1, field2 = field_names1[name], field_names2[name]
-        diff = compare_fields(field1, field2)
-        null = diff.pop("null", None)
-        index = diff.pop("index", None)
-        unique = diff.pop("unique", None)
-
+    fields_to_change = model_fields - fields_to_add - fields_to_remove
+    source_fields_map = source._meta.fields  # type: ignore[]
+    for field in model_fields_gen(model, *fields_to_change):
+        source_field = source_fields_map[field.name]  # type: ignore[]
+        diff = compare_fields(field, source_field)
         if diff:
-            fields_to_change.append((field1, diff))
+            changes.append(change_fields(model, (field, diff)))
+            null = diff.pop("null", None)
+            if null is not None:
+                changes.append(change_not_null(model, field.name, null=null))
 
-        if null is not None:
-            fields_nulls.append((name, null))
+    return changes
 
-        if (index is not None) or (unique is not None):
-            fields_indexes.append((name, index, unique))
 
-    if fields_to_change:
-        changes.append(change_fields(model1, *fields_to_change))
+def diff_model_indexes(model: TModelType, source: TModelType) -> list[str]:
+    changes: list[str] = []
 
-    for name, null in fields_nulls:
-        changes.append(change_not_null(model1, name, null=null))
+    model_indexes = model._meta.fields_to_index()  # type: ignore[]
+    source_indexes = source._meta.fields_to_index()  # type: ignore[]
 
-    for name, index, unique in fields_indexes:
-        if (index is True) or (unique is True):
-            if field_names2[name].unique or field_names2[name].index:
-                changes.append(drop_index(model1, name))
-            changes.append(add_index(model1, name, unique=unique))
-        else:
-            changes.append(drop_index(model1, name))
+    model_indexes_names = {idx._name for idx in model_indexes}  # type: ignore[]
+    source_indexes_names = {idx._name for idx in source_indexes}  # type: ignore[]
 
-    # Check additional compound indexes
-    indexes1 = meta1.indexes
-    indexes2 = meta2.indexes
+    # Add indexes
+    indexes_to_add = model_indexes_names - source_indexes_names
+    for name in sorted(indexes_to_add):
+        changes.append(  # noqa: PERF401
+            add_index(next(idx for idx in model_indexes if idx._name == name))
+        )
 
-    # Drop compound indexes
-    indexes_to_drop = set(indexes2) - set(indexes1)
-    changes.extend(
-        drop_index(model1, name=index[0])
-        for index in indexes_to_drop
-        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1
-    )
+    # Drop indexes
+    indexes_to_drop = source_indexes_names - model_indexes_names
+    for name in sorted(indexes_to_drop):
+        changes.append(  # noqa: PERF401
+            drop_index(next(idx for idx in source_indexes if idx._name == name))
+        )
 
-    # Add compound indexes
-    indexes_to_add = set(indexes1) - set(indexes2)
-    changes.extend(
-        add_index(model1, name=index[0], unique=index[1])
-        for index in indexes_to_add
-        if isinstance(index[0], (list, tuple)) and len(index[0]) > 1
-    )
+    # Change indexes
+    indexes_to_check = model_indexes_names & source_indexes_names
+    for name in sorted(indexes_to_check):
+        idx1 = next(idx for idx in model_indexes if idx._name == name)
+        idx2 = next(idx for idx in source_indexes if idx._name == name)
+        if idx1._unique != idx2._unique or idx1._expressions != idx2._expressions:
+            changes.append(drop_index(idx2))
+            changes.append(add_index(idx1))
 
     return changes
 
 
 def diff_many(
-    models1: List[TModelType],
-    models2: List[TModelType],
-    migrator: Optional[Migrator] = None,
+    active: list[TModelType],
+    source: list[TModelType],
+    migrator: Migrator | None = None,
     *,
     reverse=False,
-) -> List[str]:
+) -> list[str]:
     """Calculate changes for migrations from models2 to models1."""
-    models1 = cast(List["TModelType"], pw.sort_models(models1))  # type: ignore[]
-    models2 = cast(List["TModelType"], pw.sort_models(models2))  # type: ignore[]
+    active = cast("list[TModelType]", pw.sort_models(active))  # type: ignore[]
+    source = cast("list[TModelType]", pw.sort_models(source))  # type: ignore[]
 
     if reverse:
-        models1 = list(reversed(models1))
-        models2 = list(reversed(models2))
+        active = list(reversed(active))
+        source = list(reversed(source))
 
-    models_map1 = {cast(str, m._meta.table_name): m for m in models1}  # type: ignore[]
-    models_map2 = {cast(str, m._meta.table_name): m for m in models2}  # type: ignore[]
+    active_map = {cast("str", m._meta.table_name): m for m in active}  # type: ignore[]
+    source_map = {cast("str", m._meta.table_name): m for m in source}  # type: ignore[]
 
-    changes: List[str] = []
+    changes: list[str] = []
 
-    for name, model1 in models_map1.items():
-        if name not in models_map2:
+    for name, model in active_map.items():
+        if name not in source_map:
             continue
-        changes.extend(diff_one(model1, models_map2[name], migrator=migrator))
+        changes.extend(diff_model(model, source_map[name], migrator=migrator))
 
     # Add models
     changes.extend(
-        create_model(models_map1[name], migrator=migrator)
-        for name in [m for m in models_map1 if m not in models_map2]
+        create_model(active_map[name], migrator=migrator)
+        for name in [m for m in active_map if m not in source_map]
     )
 
     # Remove models
     changes.extend(
-        remove_model(models_map2[name]) for name in [m for m in models_map2 if m not in models_map1]
+        remove_model(source_map[name]) for name in [m for m in source_map if m not in active_map]
     )
 
     return changes
@@ -317,13 +308,13 @@ def create_fields(model_type: TModelType, *fields: pw.Field, **kwargs) -> str:
     )
 
 
-def drop_fields(model_type: TModelType, *fields: pw.Field, **kwargs) -> str:
+def drop_fields(model_type: TModelType, *fields: pw.Field | str) -> str:
     """Generate migrations to remove fields."""
     meta = model_type._meta  # type: ignore[]
-    return "migrator.remove_fields('%s', %s)" % (
-        meta.table_name,
-        ", ".join(map(repr, fields)),
+    fields = tuple(
+        repr(field.name) if isinstance(field, pw.Field) else repr(field) for field in fields
     )
+    return "migrator.remove_fields('%s', %s)" % (meta.table_name, ", ".join(fields))
 
 
 def field_to_code(field: pw.Field, *, space: bool = True, **kwargs) -> str:
@@ -332,7 +323,7 @@ def field_to_code(field: pw.Field, *, space: bool = True, **kwargs) -> str:
     return col.get_field(" " if space else "")
 
 
-def compare_fields(field1: pw.Field, field2: pw.Field) -> Dict:
+def compare_fields(field1: pw.Field, field2: pw.Field) -> dict:
     """Find diffs between the given fields."""
     ftype1, ftype2 = find_field_type(field1), find_field_type(field2)
     if ftype1 != ftype2:
@@ -349,7 +340,7 @@ def compare_fields(field1: pw.Field, field2: pw.Field) -> Dict:
     return dict(set(params1.items()) - set(params2.items()))
 
 
-def change_fields(model_cls: TModelType, *fields: pw.Tuple[pw.Field, Dict]) -> str:
+def change_fields(model_cls: TModelType, *fields: pw.Tuple[pw.Field, dict]) -> str:
     """Generate migrations to change fields."""
     meta = model_cls._meta  # type: ignore[]
     return "migrator.change_fields('%s', %s)" % (
@@ -365,21 +356,24 @@ def change_not_null(model_type: TModelType, name: str, *, null: bool) -> str:
     return "migrator.%s('%s', %s)" % (operation, meta.table_name, repr(name))
 
 
-def add_index(model_type: TModelType, name: Union[str, Iterable[str]], *, unique: bool) -> str:
+def add_index(idx: pw.ModelIndex) -> str:
     """Generate migrations."""
-    meta = model_type._meta  # type: ignore[]
-    columns = repr(name).strip("()[]")
-    return f"migrator.add_index('{meta.table_name}', {columns}, unique={unique})"
+    meta = idx._model._meta  # type: ignore[]
+    unique = idx._unique  # type: ignore[]
+    fields = idx._expressions  # type: ignore[]
+    names = ", ".join(f"'{f.name}'" for f in fields)
+    return f"migrator.add_index('{meta.table_name}', {names}, unique={unique})"
 
 
-def drop_index(model_type: TModelType, name: Union[str, Iterable[str]]) -> str:
+def drop_index(idx: pw.ModelIndex) -> str:
     """Generate migrations."""
-    meta = model_type._meta  # type: ignore[]
-    columns = repr(name).strip("()[]")
-    return f"migrator.drop_index('{meta.table_name}', {columns})"
+    meta = idx._model._meta  # type: ignore[]
+    fields = idx._expressions  # type: ignore[]
+    names = ", ".join(f"'{f.name}'" for f in fields)
+    return f"migrator.drop_index('{meta.table_name}', {names})"
 
 
-def find_field_type(field: pw.Field) -> Type[pw.Field]:
+def find_field_type(field: pw.Field) -> type[pw.Field]:
     ftype = type(field)
     if ftype.__module__ not in PW_MODULES:
         for cls in ftype.mro():

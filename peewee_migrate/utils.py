@@ -1,13 +1,17 @@
-from warnings import warn
+from peewee_migrate.types import TModelType
 
 
-def depricated_method(fn, depricated_fn_name):
-    def wrapper(*args, **kwargs):
-        warn(
-            f"{depricated_fn_name} is depricated. Use {fn.__name__} instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return fn(*args, **kwargs)
+def model_fields_gen(model: TModelType, *names: str):
+    """Get model fields by names.
 
-    return wrapper
+    Args:
+        model (pw.Model): Peewee model.
+        *names (str): Field names.
+
+    Returns:
+        list: List of fields.
+    """
+    meta = model._meta  # type: ignore[]
+    for field in meta.sorted_fields:
+        if field.name in names:
+            yield field

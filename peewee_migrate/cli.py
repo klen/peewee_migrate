@@ -1,11 +1,12 @@
 """CLI integration."""
+
 from __future__ import annotations
 
 import logging
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Pattern, Union
+from typing import TYPE_CHECKING, Pattern
 
 import click
 from playhouse.db_url import connect
@@ -17,13 +18,13 @@ from .router import Router
 if TYPE_CHECKING:
     from peewee_migrate.types import TParams
 
-CLEAN_RE: Pattern = re.compile(r"\s+$", re.M)
-VERBOSE: List[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
+CLEAN_RE: Pattern = re.compile(r"\s+$", re.MULTILINE)
+VERBOSE: list[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
 
 
 def get_router(
-    directory: Optional[Union[str, Path]] = None,
-    database: Optional[str] = None,
+    directory: str | Path | None = None,
+    database: str | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
 ) -> Router:
@@ -83,9 +84,9 @@ def cli():
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def migrate(  # noqa: PLR0913
-    name: Optional[str] = None,
-    database: Optional[str] = None,
-    directory: Optional[str] = None,
+    name: str | None = None,
+    database: str | None = None,
+    directory: str | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
     *,
@@ -121,14 +122,14 @@ def migrate(  # noqa: PLR0913
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def create(  # noqa: PLR0913
-    name: Optional[str] = None,
-    database: Optional[str] = None,
-    directory: Optional[str] = None,
-    migratetable: Optional[str] = None,
+    name: str | None = None,
+    database: str | None = None,
+    directory: str | None = None,
+    migratetable: str | None = None,
     verbose: int = 0,
     *,
     auto: bool = False,
-    auto_source: Optional[str] = None,
+    auto_source: str | None = None,
 ):
     """Create a migration."""
     router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
@@ -148,9 +149,9 @@ def create(  # noqa: PLR0913
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def rollback(
-    database: Optional[str] = None,
-    directory: Optional[str] = None,
-    migratetable: Optional[str] = None,
+    database: str | None = None,
+    directory: str | None = None,
+    migratetable: str | None = None,
     verbose: int = 0,
     count: int = 1,
 ):
@@ -170,9 +171,9 @@ def rollback(
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def list(  # noqa: A001
-    database: Optional[str] = None,
-    directory: Optional[str] = None,
-    migratetable: Optional[str] = None,
+    database: str | None = None,
+    directory: str | None = None,
+    migratetable: str | None = None,
     verbose: int = 0,
 ):
     """List migrations."""
@@ -193,9 +194,9 @@ def list(  # noqa: A001
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def merge(
-    database: Optional[str] = None,
-    directory: Optional[str] = None,
-    migratetable: Optional[str] = None,
+    database: str | None = None,
+    directory: str | None = None,
+    migratetable: str | None = None,
     verbose: int = 0,
 ):
     """Merge migrations into one."""

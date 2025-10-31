@@ -6,29 +6,29 @@ from peewee_migrate.cli import cli, get_router
 runner = CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def dir_option(tmpdir):
     return "--directory=%s" % tmpdir
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_url(tmpdir):
     db_path = tmpdir / "test_sqlite.db"
     db_path.open("a").close()
     return "sqlite:///%s" % db_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_option(db_url):
     return "--database=%s" % db_url
 
 
-@pytest.fixture()
+@pytest.fixture
 def router(tmpdir, db_url):
     return lambda: get_router(str(tmpdir), db_url)
 
 
-@pytest.fixture()
+@pytest.fixture
 def migrations(router):
     migrations_number = 5
     name = "test"
@@ -37,7 +37,7 @@ def migrations(router):
     return ["00%s_test" % i for i in range(1, migrations_number + 1)]
 
 
-@pytest.fixture()
+@pytest.fixture
 def migrations_str(migrations):
     return ", ".join(migrations)
 

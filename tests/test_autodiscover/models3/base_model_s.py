@@ -1,4 +1,5 @@
 import peewee as pw
+
 from .referenced_model_s import Model2
 
 

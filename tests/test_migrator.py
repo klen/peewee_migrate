@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import peewee as pw
 import pytest
 from playhouse.test_utils import count_queries
 
-if TYPE_CHECKING:
-    from peewee_migrate import Migrator
+from peewee_migrate import Migrator
+from peewee_migrate.auto import diff_many
 
 
 def test_migrator(router):  # noqa: PLR0915
-    from peewee_migrate import Migrator
-
     migrator = Migrator(router.database)
 
     @migrator.create_model
@@ -36,7 +32,7 @@ def test_migrator(router):  # noqa: PLR0915
     assert "finished" in meta.fields
     migrator()
 
-    migrator.remove_fields("order", "finished", "customer_id", "uid")
+    migrator.remove_fields("order", "finished", "customer_id", "uid", legacy=True)
     assert "finished" not in meta.fields
     assert not hasattr(Order, "customer_id")
     assert not hasattr(Order, "customer_id_id")
@@ -82,7 +78,7 @@ def test_migrator(router):  # noqa: PLR0915
     migrator()
     assert not meta.indexes
 
-    migrator.remove_fields(Order, "customer")
+    migrator.remove_fields(Order, "customer", legacy=True)
     migrator()
     assert not hasattr(Order, "customer")
 
@@ -99,6 +95,73 @@ def test_migrator(router):  # noqa: PLR0915
 
     migrator.change_fields(Order, identifier=pw.IntegerField(default=0))
     assert not Order._meta.indexes  # type: ignore[]
+
+
+def test_add_fields(migrator: Migrator, models):
+    _, Order = models
+    meta = Order._meta  # type: ignore[]
+    migrator.add_fields(Order, finished=pw.BooleanField(default=False))
+    assert "finished" in meta.fields
+    migrator()
+
+
+def test_add_fk(migrator: Migrator, models):
+    Customer, Order = models
+    meta = Order._meta  # type: ignore[]
+    migrator.add_fields(Order, guest=pw.ForeignKeyField(Customer, null=True))
+    assert "guest" in meta.fields
+    assert Order.guest.name == "guest"  # type: ignore[]
+    assert Order.guest.column_name == "guest_id"
+    migrator()
+
+
+def test_remove_fields(migrator: Migrator, models):
+    _, Order = models
+    meta = Order._meta  # type: ignore[]
+    to_remove = "customer", "number"
+    migrator.remove_fields(Order, *to_remove, legacy=True)
+    for field in to_remove:
+        assert field not in meta.fields
+
+    migrator()
+
+
+def test_remove_fk(migrator: Migrator):
+    Order = migrator.orm["order"]
+    meta = Order._meta  # type: ignore[]
+    assert "customer" in meta.fields
+    migrator.remove_fields(Order, "customer", legacy=True)
+    assert "customer" not in meta.fields
+    migrator()
+
+
+def test_rename_field(migrator: Migrator):
+    Order = migrator.orm["order"]
+    migrator.rename_field("order", "customer", "user")
+    meta = Order._meta  # type: ignore[]
+    assert meta.columns["user_id"]
+    assert meta.fields["user"]
+    [operation] = migrator.__ops__
+    assert operation.args == ("order", "customer_id", "user_id")  # type: ignore[union-attr]
+
+    # Rollback
+    migrator()
+    migrator.rename_field("order", "user", "customer")
+    [operation] = migrator.__ops__
+    assert operation.args == ("order", "user_id", "customer_id")  # type: ignore[union-attr]
+
+
+def test_rename_table(migrator: Migrator):
+    migrator.rename_table("customer", "user")
+    [operation] = migrator.__ops__
+    assert operation.args == ("customer", "user")  # type: ignore[union-attr]
+
+    class User(pw.Model):
+        name = pw.CharField()
+        age = pw.IntegerField()
+
+    migrations = diff_many([migrator.orm["user"]], [User], migrator)
+    assert not migrations
 
 
 def test_migrator_fake(migrator: Migrator):
@@ -145,37 +208,6 @@ def test_migrator_postgres(migrator, database):
     migrator.change_fields("user", name=pw.TextField())
     migrator()
     assert 'ALTER TABLE "user" ALTER COLUMN "name" TYPE TEXT' in database.cursor().queries
-
-
-def test_rename_column(migrator: Migrator):
-    Order = migrator.orm["order"]
-    migrator.rename_field("order", "customer", "user")
-    meta = Order._meta  # type: ignore[]
-    assert meta.columns["user_id"]
-    assert meta.fields["user"]
-    [operation] = migrator.__ops__
-    assert operation.args == ("order", "customer_id", "user_id")  # type: ignore[union-attr]
-
-    # Rollback
-    migrator()
-    migrator.rename_field("order", "user", "customer")
-    [operation] = migrator.__ops__
-    assert operation.args == ("order", "user_id", "customer_id")  # type: ignore[union-attr]
-
-
-def test_rename_table(migrator: Migrator):
-    migrator.rename_table("customer", "user")
-    [operation] = migrator.__ops__
-    assert operation.args == ("customer", "user")  # type: ignore[union-attr]
-
-    class User(pw.Model):
-        name = pw.CharField()
-        age = pw.IntegerField()
-
-    from peewee_migrate.auto import diff_many
-
-    migrations = diff_many([migrator.orm["user"]], [User], migrator)
-    assert not migrations
 
 
 def test_add_field_unique(migrator: Migrator):

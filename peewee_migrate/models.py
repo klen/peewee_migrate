@@ -9,7 +9,7 @@ import peewee as pw
 class MigrateHistory(pw.Model):
     """Presents the migrations in database."""
 
-    id = pw.AutoField()  # noqa: A003
+    id = pw.AutoField()
     name = pw.CharField()
     migrated_at = pw.DateTimeField(default=dt.datetime.utcnow)
 

@@ -15,59 +15,69 @@ from playhouse.postgres_ext import (
     TSVectorField,
 )
 
+from peewee_migrate.auto import (
+    compare_fields,
+    diff_many,
+    diff_model,
+    field_to_code,
+    model_to_code,
+)
+from peewee_migrate.cli import get_router
+
+from .models import Person
+
 CURDIR = Path(__file__).parent
 
 
 def test_auto_base():
-    from peewee_migrate.auto import diff_many, diff_one, model_to_code
-    from peewee_migrate.cli import get_router
-
     router = get_router(CURDIR / "migrations", "sqlite:///:memory:")
     router.run()
     migrator = router.migrator
-    models = list(migrator)
-    person_cls = migrator.orm.Person
-    tag_cls = migrator.orm.Tag
+    TagSource = migrator.orm.Tag
+    PersonSource = migrator.orm.Person
 
-    code = model_to_code(person_cls)
+    code = model_to_code(PersonSource)
     assert code
     assert 'table_name = "person"' in code
 
-    changes = diff_many(models, [], migrator=migrator)
+    changes = diff_many(list(migrator), [], migrator=migrator)
     assert len(changes) == 2
+
+    class Person(pw.Model):  # type: ignore[]
+        first_name = pw.CharField(unique=True)
+        last_name = pw.CharField(max_length=255, index=True)
+
+        dob = pw.DateField(null=True)
+        is_deleted = pw.BooleanField(default=False)
+        email = pw.CharField(index=True, unique=True)
+        birthday = pw.DateField(default=dt.datetime.now)
+
+    changes = diff_model(Person, PersonSource, migrator=migrator)
+    assert not changes
 
     class Person(pw.Model):
         first_name = pw.IntegerField()
         last_name = pw.CharField(max_length=1024, null=True, unique=True)
-        tag = pw.ForeignKeyField(tag_cls, on_delete="CASCADE", backref="persons")
+        tag = pw.ForeignKeyField(TagSource, on_delete="CASCADE", backref="persons")
         email = pw.CharField(index=True, unique=True)
 
-    changes = diff_one(Person, person_cls, migrator=migrator)
-    assert len(changes) == 6
+    changes = diff_model(Person, PersonSource, migrator=migrator)
+    assert len(changes) == 9
+    assert changes[0].startswith("migrator.add_fields(")
     assert "on_delete='CASCADE'" in changes[0]
     assert "backref='persons'" not in changes[0]
-    assert changes[-3] == "migrator.drop_not_null('person', 'last_name')"
-    assert changes[-2] == "migrator.drop_index('person', 'last_name')"
-    assert changes[-1] == "migrator.add_index('person', 'last_name', unique=True)"
 
-    migrator.drop_index("person", "email")
-    migrator.add_index("person", "email", unique=True)
-
-    class Person2(pw.Model):
-        first_name = pw.CharField(unique=True)
-        last_name = pw.CharField(max_length=255, index=True)
-        dob = pw.DateField(null=True)
-        birthday = pw.DateField(default=dt.datetime.now)
-        email = pw.CharField(index=True, unique=True)
-        is_deleted = pw.BooleanField(default=False)
-
-    changes = diff_one(person_cls, Person2, migrator=migrator)
-    assert not changes
+    assert changes[1].startswith("migrator.remove_fields('person'")
+    assert changes[2].startswith("migrator.change_fields('person', first_name=")
+    assert changes[3].startswith("migrator.change_fields('person', last_name=")
+    assert changes[4].startswith("migrator.drop_not_null('person', 'last_name')")
+    assert changes[5].startswith("migrator.add_index('person', 'tag'")
+    assert changes[6].startswith("migrator.drop_index('person', 'first_name')")
+    assert changes[7].startswith("migrator.drop_index('person', 'last_name')")
+    assert changes[8].startswith("migrator.add_index('person', 'last_name', unique=True)")
 
 
 def test_auto_postgresext():
-    from peewee_migrate.auto import model_to_code
-
     class Object(pw.Model):
         array_field = ArrayField()
         binary_json_field = BinaryJSONField()
@@ -84,8 +94,6 @@ def test_auto_postgresext():
 
 
 def test_auto_multi_column_index():
-    from peewee_migrate.auto import model_to_code
-
     class Object(pw.Model):
         first_name = pw.CharField()
         last_name = pw.CharField()
@@ -99,8 +107,6 @@ def test_auto_multi_column_index():
 
 
 def test_auto_self_referencing_foreign_key_on_model_create():
-    from peewee_migrate.auto import field_to_code
-
     class Employee(pw.Model):
         manager = pw.ForeignKeyField("self")
 
@@ -109,17 +115,11 @@ def test_auto_self_referencing_foreign_key_on_model_create():
 
 
 def test_auto_default():
-    from peewee_migrate.auto import field_to_code
-
-    from .models import Person
-
     code = field_to_code(Person.is_deleted)
     assert code == "is_deleted = pw.BooleanField(default=False)"
 
 
 def test_auto_on_update_on_delete():
-    from peewee_migrate.auto import field_to_code
-
     class Employee(pw.Model):
         manager = pw.ForeignKeyField("self", on_update="CASCADE", on_delete="CASCADE")
 
@@ -129,54 +129,80 @@ def test_auto_on_update_on_delete():
 
 
 def test_diff_multi_column_index():
-    from peewee_migrate.auto import diff_one
-
     class Object(pw.Model):
         first_name = pw.CharField()
         last_name = pw.CharField()
 
-    class ObjectWithUniqueIndex(pw.Model):
-        first_name = pw.CharField()
-        last_name = pw.CharField()
-
-        class Meta:
-            indexes = ((("first_name", "last_name"), True),)
-
-    class ObjectWithNonUniqueIndex(pw.Model):
-        first_name = pw.CharField()
-        last_name = pw.CharField()
-
-        class Meta:
-            indexes = ((("first_name", "last_name"), False),)
-
-    changes = diff_one(ObjectWithUniqueIndex, Object)
-    assert len(changes) == 1
-    assert (
-        changes[0]
-        == "migrator.add_index('objectwithuniqueindex', 'first_name', 'last_name', unique=True)"
+    ObjectWithUniqueIndex = type(  # type: ignore[]
+        "Object",
+        (pw.Model,),
+        {
+            "first_name": pw.CharField(),
+            "last_name": pw.CharField(),
+            "Meta": type(
+                "Meta",
+                (),
+                {
+                    "table_name": "object",
+                    "indexes": ((("first_name", "last_name"), True),),
+                },
+            ),
+        },
     )
 
-    changes = diff_one(ObjectWithNonUniqueIndex, Object)
-    assert len(changes) == 1
-    assert (
-        changes[0]
-        == "migrator.add_index('objectwithnonuniqueindex', 'first_name', 'last_name', unique=False)"
+    ObjectWithNonUniqueIndex = type(  # type: ignore[]
+        "Object",
+        (pw.Model,),
+        {
+            "first_name": pw.CharField(),
+            "last_name": pw.CharField(),
+            "Meta": type(
+                "Meta",
+                (),
+                {
+                    "table_name": "object",
+                    "indexes": ((("first_name", "last_name"), False),),
+                },
+            ),
+        },
     )
 
-    changes = diff_one(ObjectWithNonUniqueIndex, ObjectWithUniqueIndex)
+    changes = diff_model(ObjectWithUniqueIndex, Object)
+    assert len(changes) == 1
+    assert changes[0] == "migrator.add_index('object', 'first_name', 'last_name', unique=True)"
+
+    changes = diff_model(ObjectWithNonUniqueIndex, Object)
+    assert len(changes) == 1
+    assert changes[0] == "migrator.add_index('object', 'first_name', 'last_name', unique=False)"
+
+    changes = diff_model(ObjectWithNonUniqueIndex, ObjectWithUniqueIndex)
     assert len(changes) == 2
-    assert (
-        changes[0] == "migrator.drop_index('objectwithnonuniqueindex', 'first_name', 'last_name')"
-    )
-    assert (
-        changes[1]
-        == "migrator.add_index('objectwithnonuniqueindex', 'first_name', 'last_name', unique=False)"
-    )
+    assert changes[0] == "migrator.drop_index('object', 'first_name', 'last_name')"
+    assert changes[1] == "migrator.add_index('object', 'first_name', 'last_name', unique=False)"
+
+
+def test_diff_model_index():
+    class Order1(pw.Model):
+        active = pw.BooleanField()
+        order_id = pw.CharField()
+
+        class Meta:
+            table_name = "order"
+
+    class Order2(pw.Model):
+        active = pw.BooleanField()
+        order_id = pw.CharField()
+
+        class Meta:
+            table_name = "order"
+
+    Order2.add_index(Order2.active, Order2.order_id, where=(Order2.active))
+
+    changes = diff_model(Order2, Order1)
+    assert changes
 
 
 def test_diff_default():
-    from peewee_migrate.auto import compare_fields
-
     class Object(pw.Model):
         f1 = pw.BooleanField(default=True)
         f2 = pw.BooleanField(default=False)
@@ -186,8 +212,6 @@ def test_diff_default():
 
 
 def test_diff_self_referencing_foreign_key_on_field_added():
-    from peewee_migrate.auto import diff_one
-
     class Employee(pw.Model):
         name = pw.CharField()
 
@@ -195,14 +219,15 @@ def test_diff_self_referencing_foreign_key_on_field_added():
         name = pw.CharField()
         manager = pw.ForeignKeyField("self")
 
-    changes = diff_one(EmployeeNew, Employee)
+        class Meta:
+            table_name = "employee"
+
+    changes = diff_model(EmployeeNew, Employee)
     assert "migrator.add_fields" in changes[0]
     assert "model='self'" in changes[0]
 
 
 def test_custom_fields():
-    from peewee_migrate.auto import compare_fields, field_to_code
-
     class Test(pw.Model):
         dtfield = pw.DateTimeField(default=dt.datetime.now)
         datetime_tz_field = DateTimeTZField()
@@ -227,8 +252,6 @@ def test_custom_fields():
 
 
 def test_custom_fields2():
-    from peewee_migrate.auto import field_to_code
-
     class EnumField(pw.CharField):
         def __init__(self, enum, *args, **kwargs):
             """Initialize the field."""
@@ -270,8 +293,6 @@ def test_diff_fk_on_delete(migrator):
     class Test3(pw.Model):
         test = pw.ForeignKeyField(Test, null=True, on_delete="SET NULL")
 
-    from peewee_migrate.auto import compare_fields
-
     res = compare_fields(Test2.test, Test3.test)
     assert not res
 
@@ -285,8 +306,6 @@ def test_diff_null(migrator):
 
     class Test3(pw.Model):
         test = pw.ForeignKeyField(Test, null=False)
-
-    from peewee_migrate.auto import compare_fields
 
     res = compare_fields(Test3.test, Test2.test)
     assert res

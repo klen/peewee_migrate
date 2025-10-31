@@ -14,11 +14,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Utilities",
 ]
@@ -28,7 +28,7 @@ pw_migrate = "peewee_migrate.cli:cli"
 pw-migrate = "peewee_migrate.cli:cli"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 peewee = "^3"
 click = "*"
 
@@ -42,7 +42,7 @@ ruff = "*"
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py310"
 select = ["ALL"]
 ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "S", "SLF", "INP001", "PLR2004"]
 
@@ -55,7 +55,7 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py310"]
 preview = true
 
 [build-system]

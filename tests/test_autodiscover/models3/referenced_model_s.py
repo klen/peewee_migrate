@@ -1,4 +1,5 @@
 import peewee as pw
+
 from .nested_referenced_model_s import Model3
 
 
