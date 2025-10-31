@@ -209,7 +209,7 @@ def diff_model_indexes(model: TModelType, source: TModelType) -> list[str]:
     for name in sorted(indexes_to_check):
         idx1 = next(idx for idx in model_indexes if idx._name == name)
         idx2 = next(idx for idx in source_indexes if idx._name == name)
-        if idx1._unique != idx2._unique or idx1._expressions != idx2._expressions:
+        if idx1._unique != idx2._unique or sorted(idx1._expressions) != sorted(idx2._expressions):
             changes.append(drop_index(idx2))
             changes.append(add_index(idx1))
 

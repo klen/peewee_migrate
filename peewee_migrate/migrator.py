@@ -299,7 +299,9 @@ class Migrator:
         self.__ops__.append(self.__migrator__.rename_table(old_name, new_name))
         return model
 
-    def add_index(self, model: str | TModelType, *columns: str, unique=False) -> TModelType:
+    def add_index(
+        self, model: str | TModelType, *columns: str, unique=False, **index_params
+    ) -> TModelType:
         """Create indexes."""
         model = self.__get_model__(model)
         meta = model._meta  # type: ignore[]
@@ -314,7 +316,9 @@ class Migrator:
 
             columns_.append(field.column_name)
 
-        self.__ops__.append(self.__migrator__.add_index(meta.table_name, columns_, unique=unique))
+        self.__ops__.append(
+            self.__migrator__.add_index(meta.table_name, columns_, unique=unique, **index_params)
+        )
         return model
 
     def drop_index(self, model: str | TModelType, *columns: str) -> TModelType:
@@ -429,12 +433,12 @@ class SchemaMigrator(ScM):
         return ctx.sql(field.db_value(default))
 
     @operation
-    def add_index(self, table, columns, unique=False, using=None, where=None):  # noqa: FBT002
+    def add_index(self, table, columns, unique=False, using=None, **index_params):  # noqa: FBT002
         ctx = self.make_context()
         index_name = make_index_name(table, columns)
         table_obj = pw.Table(table)
         cols = [getattr(table_obj.c, column) for column in columns]
-        index = pw.Index(index_name, table_obj, cols, unique=unique, using=using, where=where)
+        index = pw.Index(index_name, table_obj, cols, unique=unique, using=using, **index_params)
         return ctx.sql(index)
 
     def alter_change_column(
