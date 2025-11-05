@@ -124,18 +124,12 @@ class Column(VanilaColumn):
         params = super(Column, self).get_field_parameters()
         params.pop("backref", None)
         if change:
+            params["null"] = self.nullable
             params["unique"] = bool(params.pop("unique", False))
             params["index"] = bool(params.pop("index", False)) or params["unique"]
+
             params.pop("on_delete", None)
             params.pop("on_update", None)
-            params["null"] = self.nullable
-
-        if self.field.default is not None and not callable(self.field.default):
-            value = self.field.db_value(self.field.default)
-            if isinstance(value, pw.WrappedNode):
-                params["default"] = str(value.node)
-            else:
-                params["default"] = repr(value)
 
         return params
 

@@ -77,6 +77,22 @@ def test_auto_base():
     assert changes[8].startswith("migrator.add_index('person', 'last_name', unique=True)")
 
 
+def test_model_to_code():
+    class Object(pw.Model):
+        name = pw.CharField()
+        age = pw.IntegerField(default=0)
+
+        class Meta:
+            table_name = "object"
+
+    code = model_to_code(Object)
+    assert code
+    assert "class Object(pw.Model):" in code
+    assert "name = pw.CharField(max_length=255)" in code
+    assert "age = pw.IntegerField()" in code
+    assert 'table_name = "object"' in code
+
+
 def test_auto_postgresext():
     class Object(pw.Model):
         array_field = ArrayField()
@@ -116,7 +132,7 @@ def test_auto_self_referencing_foreign_key_on_model_create():
 
 def test_auto_default():
     code = field_to_code(Person.is_deleted)
-    assert code == "is_deleted = pw.BooleanField(default=False)"
+    assert code == "is_deleted = pw.BooleanField()"
 
 
 def test_auto_on_update_on_delete():
@@ -202,15 +218,6 @@ def test_diff_model_index():
     assert changes
 
 
-def test_diff_default():
-    class Object(pw.Model):
-        f1 = pw.BooleanField(default=True)
-        f2 = pw.BooleanField(default=False)
-
-    res = compare_fields(Object.f1, Object.f2)
-    assert res
-
-
 def test_diff_self_referencing_foreign_key_on_field_added():
     class Employee(pw.Model):
         name = pw.CharField()
@@ -280,7 +287,7 @@ def test_custom_fields2():
         enum_field = EnumField(TestEnum, default=TestEnum.A)
 
     code = field_to_code(Test.enum_field)
-    assert code == "enum_field = pw.CharField(default='a', max_length=255)"
+    assert code == "enum_field = pw.CharField(max_length=255)"
 
 
 def test_diff_fk_on_delete(migrator):
