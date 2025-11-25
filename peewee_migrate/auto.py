@@ -123,11 +123,20 @@ class Column(VanilaColumn):
         """Generate parameters for self field."""
         params = super(Column, self).get_field_parameters()
         params.pop("backref", None)
+
+        if self.field.default is not None and not callable(self.field.default):
+            value = self.field.db_value(self.field.default)
+            if isinstance(value, pw.WrappedNode):
+                params["default"] = str(value.node)
+            else:
+                params["default"] = repr(value)
+
         if change:
             params["null"] = self.nullable
             params["unique"] = bool(params.pop("unique", False))
             params["index"] = bool(params.pop("index", False)) or params["unique"]
 
+            params.pop("default", None)
             params.pop("on_delete", None)
             params.pop("on_update", None)
 
@@ -184,18 +193,18 @@ def diff_model_indexes(model: TModelType, source: TModelType) -> list[str]:
     model_indexes_names = {idx._name for idx in model_indexes}  # type: ignore[]
     source_indexes_names = {idx._name for idx in source_indexes}  # type: ignore[]
 
-    # Add indexes
-    indexes_to_add = model_indexes_names - source_indexes_names
-    for name in sorted(indexes_to_add):
-        changes.append(  # noqa: PERF401
-            add_index(next(idx for idx in model_indexes if idx._name == name))
-        )
-
     # Drop indexes
     indexes_to_drop = source_indexes_names - model_indexes_names
     for name in sorted(indexes_to_drop):
         changes.append(  # noqa: PERF401
             drop_index(next(idx for idx in source_indexes if idx._name == name))
+        )
+
+    # Add indexes
+    indexes_to_add = model_indexes_names - source_indexes_names
+    for name in sorted(indexes_to_add):
+        changes.append(  # noqa: PERF401
+            add_index(next(idx for idx in model_indexes if idx._name == name))
         )
 
     # Change indexes
