@@ -281,7 +281,7 @@ class Router(BaseRouter):
         name = "{:03}_".format(num + 1) + name
         filename = name + ".py"
         path = self.migrate_dir / filename
-        with path.open("w") as f:
+        with path.open("w", encoding="utf-8") as f:
             f.write(TEMPLATE.format(migrate=migrate, rollback=rollback, name=filename))
 
         return name
