@@ -13,7 +13,7 @@ repos:
         stages: ["commit-msg"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: v5.0.0
     hooks:
       - id: check-case-conflict
         stages: ["pre-commit"]
@@ -38,43 +38,39 @@ repos:
       - id: trailing-whitespace
         stages: ["pre-commit"]
 
-  - repo: https://github.com/psf/black
-    rev: 25.9.0
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.9
     hooks:
-      - id: black
+      - id: uv-lock
+        args: ["--check"]
         stages: ["pre-commit"]
 
-  - repo: https://github.com/python-poetry/poetry
-    rev: "2.2.1"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.14.14"
     hooks:
-      - id: poetry-check
-        files: ^(.*/)?pyproject\.toml$
+      # Run the formatter.
+      - id: ruff-format
+        name: ruff format
         stages: ["pre-commit"]
-      - id: poetry-lock
-        files: ^(.*/)?(poetry\.lock|pyproject\.toml)$
+      # Run the linter.
+      - id: ruff-check
+        name: ruff check
+        stages: ["pre-commit"]
+
+  - repo: https://github.com/facebook/pyrefly-pre-commit
+    rev: 0.50.1 # Note: this is the version of the pre-commit hook, NOT the pyrefly version used for type checking
+    hooks:
+      - id: pyrefly-check
+        name: pyrefly check
+        pass_filenames: false # Recommended to do full repo checks. However, you can change this to `true` to only check changed files
+        language: system # Use system-installed pyrefly
         stages: ["pre-commit"]
 
   - repo: local
     hooks:
-      - id: ruff
-        name: ruff
-        entry: poetry run ruff check peewee_migrate
-        language: system
-        pass_filenames: false
-        files: \.py$
-        stages: ["pre-commit"]
-
-      - id: mypy
-        name: mypy
-        entry: poetry run mypy
-        language: system
-        pass_filenames: false
-        files: \.py$
-        stages: ["pre-push"]
-
       - id: pytest
         name: pytest
-        entry: poetry run pytest
+        entry: uv run pytest
         language: system
         pass_filenames: false
         files: \.py$
