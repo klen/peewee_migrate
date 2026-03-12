@@ -1,3 +1,3 @@
 # Migration config
 
-DATABASE = 'sqlite:///:memory:'
+DATABASE = "sqlite:///:memory:"

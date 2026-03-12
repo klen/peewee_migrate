@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Pattern
 
@@ -16,6 +15,8 @@ from .models import MIGRATE_TABLE
 from .router import Router
 
 if TYPE_CHECKING:
+    import peewee as pw
+
     from peewee_migrate.types import TParams
 
 CLEAN_RE: Pattern = re.compile(r"\s+$", re.MULTILINE)
@@ -48,26 +49,25 @@ def get_router(
         except IOError:
             pass
 
-    if isinstance(database, str):
-        database = connect(database)
+    db: pw.Database | None = connect(database) if isinstance(database, str) else None
 
     logger.setLevel(logging_level)
 
-    if not database:
+    if not db:
         logger.error("Database is undefined")
-        return sys.exit(1)
+        raise SystemExit(1)
 
     try:
         return Router(
-            database,
+            db,
             migrate_table=migratetable,
             migrate_dir=directory,
             ignore=ignore,
             schema=schema,
         )
-    except RuntimeError:
+    except RuntimeError as exc:
         logger.exception("Failed to initialize router")
-        return sys.exit(1)
+        raise SystemExit(1) from exc
 
 
 @click.group()

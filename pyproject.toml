@@ -32,7 +32,7 @@ pw_migrate = "peewee_migrate.cli:cli"
 pw-migrate = "peewee_migrate.cli:cli"
 
 [dependency-groups]
-dev = ["pre-commit", "psycopg2-binary", "pytest", "ruff"]
+dev = ["pre-commit", "psycopg2-binary", "pytest", "ruff", "pyrefly"]
 
 [build-system]
 requires = ["uv_build>=0.10.2,<0.11.0"]
@@ -46,18 +46,20 @@ module-name = "peewee_migrate"
 module-root = ""
 
 [tool.ruff]
-include = ["peewee_migrate", "tests"]
+include = ["peewee_migrate/*", "tests/**/*"]
 line-length = 100
 target-version = "py310"
-select = ["ALL"]
-ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "S", "SLF", "INP001", "PLR2004"]
 
-[tool.pytest.ini_options]
-addopts = "-svx"
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "S", "SLF", "INP001", "PLR2004", "TD", "FIX"]
 
 [tool.pyrefly]
 project-includes = ["peewee_migrate"]
 project-excludes = ["tests", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+addopts = "-svx"
 
 [tool.bumpversion]
 current_version = "1.14.3"

@@ -50,7 +50,7 @@ def dtf_to_params(field: pw.DateTimeField) -> TParams:
 
 
 def arrayf_to_params(f: postgres_ext.ArrayField):
-    inner_field: pw.Field = f._ArrayField__field
+    inner_field = cast("pw.Field", vars(f)["_ArrayField__field"])
     module = FIELD_MODULES_MAP.get(inner_field.__class__.__name__, "pw")
     return {
         "field_class": f"{module}.{inner_field.__class__.__name__}",
@@ -314,10 +314,10 @@ def create_fields(model_type: TModelType, *fields: pw.Field, **kwargs) -> str:
 def drop_fields(model_type: TModelType, *fields: pw.Field | str) -> str:
     """Generate migrations to remove fields."""
     meta = model_type._meta  # type: ignore[]
-    fields = tuple(
+    field_names: tuple[str, ...] = tuple(
         repr(field.name) if isinstance(field, pw.Field) else repr(field) for field in fields
     )
-    return "migrator.remove_fields('%s', %s)" % (meta.table_name, ", ".join(fields))
+    return "migrator.remove_fields('%s', %s)" % (meta.table_name, ", ".join(field_names))
 
 
 def field_to_code(field: pw.Field, *, space: bool = True, **kwargs) -> str:

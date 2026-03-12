@@ -125,9 +125,10 @@ class Migrator:
         """
         meta = model._meta  # type: ignore[]
         self.orm.add(model)
+        model_cls = cast("type[pw.Model]", model)
 
         meta.database = self.__database__
-        self.__ops__.append(model.create_table)
+        self.__ops__.append(model_cls.create_table)
         return model
 
     def remove_model(self, model: str | TModelType, *, cascade: bool = True):
@@ -190,8 +191,8 @@ class Migrator:
                 )
 
             if isinstance(field, pw.ForeignKeyField):
-                on_delete = field.on_delete if field.on_delete else "RESTRICT"
-                on_update = field.on_update if field.on_update else "RESTRICT"
+                on_delete = field.on_delete or "RESTRICT"
+                on_update = field.on_update or "RESTRICT"
                 self.__ops__.append(
                     self.__migrator__.add_foreign_key_constraint(
                         meta.table_name,
