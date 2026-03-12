@@ -109,7 +109,7 @@ wheels = [
 
 [[package]]
 name = "peewee-migrate"
-version = "1.14.3"
+version = "1.15.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
