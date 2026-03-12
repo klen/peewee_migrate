@@ -21,7 +21,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Utilities",
 ]
-dependencies = ["peewee>=3,<4", "click"]
+dependencies = ["peewee", "click"]
 
 [project.urls]
 Homepage = "https://github.com/klen/peewee_migrate"
@@ -32,7 +32,7 @@ pw_migrate = "peewee_migrate.cli:cli"
 pw-migrate = "peewee_migrate.cli:cli"
 
 [dependency-groups]
-dev = ["pre-commit", "psycopg2-binary>=2.9.5,<3", "pytest", "ruff"]
+dev = ["pre-commit", "psycopg2-binary", "pytest", "ruff"]
 
 [build-system]
 requires = ["uv_build>=0.10.2,<0.11.0"]
