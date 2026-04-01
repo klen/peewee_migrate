@@ -35,7 +35,7 @@ pw-migrate = "peewee_migrate.cli:cli"
 dev = ["pre-commit", "psycopg2-binary", "pytest", "ruff", "pyrefly"]
 
 [build-system]
-requires = ["uv_build>=0.10.2,<0.11.0"]
+requires = ["uv_build>=0.10.2,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv]
