@@ -100,11 +100,11 @@ wheels = [
 
 [[package]]
 name = "peewee"
-version = "4.0.1"
+version = "4.0.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bd/a0/307e09edfae54f103d66b54d82fdfd22cfc25e733731c97173f4ec661fc3/peewee-4.0.1.tar.gz", hash = "sha256:beb1a173a52952a4d69197ca36408166740b2ced339c0e8159617c3fa1e1c4da", size = 700753, upload-time = "2026-03-01T17:26:56.125Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/50/1c269015e71612a6794cfccebced95561c8addf993075de61618f32db3b4/peewee-4.0.3.tar.gz", hash = "sha256:a3062505505e12cdf386066cda43d93a98f38a995dd9664cac0534378b2f6d1e", size = 717971, upload-time = "2026-03-26T22:41:50.992Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/99/0f8d9e46df9812ab31dadb07ba304c3ff6d6076bf19a67f4d046790be2e1/peewee-4.0.1-py3-none-any.whl", hash = "sha256:10afaa02c9f6d0f2dfe0f5b9007075c985eb141ab740a8831e37be2a61b3595c", size = 139369, upload-time = "2026-03-01T17:26:54.597Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/31/93950b2c7145ea10aa454397ffa308c9aadc98dcb4103b676396571bfadd/peewee-4.0.3-py3-none-any.whl", hash = "sha256:4bc50ccdd95bf3fb79957a79ec51e5d1f8f8cab238031f0d0bb14cb8694a2525", size = 144477, upload-time = "2026-03-26T22:41:49.453Z" },
 ]
 
 [[package]]
