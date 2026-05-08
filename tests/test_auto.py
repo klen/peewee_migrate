@@ -181,7 +181,10 @@ def test_diff_models():
             legacy_table_names = False
 
     changes = diff_model(Person2, Person)
-    assert len(changes) == 9
+    # Note: no separate `add_index('person', 'tag', ...)` is emitted for the
+    # newly added `tag` ForeignKeyField — peewee's `add_column` will create
+    # that index implicitly because `ForeignKeyField` defaults to `index=True`.
+    assert len(changes) == 8
     assert changes[0].startswith("migrator.add_fields(")
     assert "on_delete='CASCADE'" in changes[0]
     assert "backref='persons'" not in changes[0]
@@ -191,9 +194,9 @@ def test_diff_models():
     assert changes[3].startswith("migrator.change_fields('person', last_name=")
     assert changes[4].startswith("migrator.drop_not_null('person', 'last_name')")
     assert changes[5].startswith("migrator.drop_index('person', 'first_name')")
-    assert changes[6].startswith("migrator.add_index('person', 'tag', unique=False)")
-    assert changes[7].startswith("migrator.drop_index('person', 'last_name')")
-    assert changes[8].startswith("migrator.add_index('person', 'last_name', unique=True)")
+    assert changes[6].startswith("migrator.drop_index('person', 'last_name')")
+    assert changes[7].startswith("migrator.add_index('person', 'last_name', unique=True)")
+    assert not any("add_index('person', 'tag'" in c for c in changes)
 
 
 def test_diff_multi_column_index():
@@ -284,6 +287,122 @@ def test_diff_self_referencing_foreign_key_on_field_added():
     changes = diff_model(EmployeeNew, Employee)
     assert "migrator.add_fields" in changes[0]
     assert "model='self'" in changes[0]
+
+
+def test_diff_no_redundant_index_for_added_fk():
+    """Regression: adding a ForeignKeyField to an existing model must not
+    emit a separate `migrator.add_index(...)` call for the FK's auto-index.
+
+    `playhouse.migrate.SchemaMigrator.add_column` already creates the index
+    implicitly because `ForeignKeyField` defaults to `index=True`. A separate
+    `add_index` call collides with the implicit one and fails on a fresh DB
+    with `OperationalError: index <table>_<fk>_id already exists`.
+    """
+
+    class Tag(pw.Model):
+        name = pw.CharField()
+
+    class BookOld(pw.Model):
+        title = pw.CharField()
+
+        class Meta:
+            table_name = "book"
+
+    class BookNew(pw.Model):
+        title = pw.CharField()
+        tag = pw.ForeignKeyField(Tag, null=True)
+
+        class Meta:
+            table_name = "book"
+
+    changes = diff_model(BookNew, BookOld)
+    assert any("migrator.add_fields" in c for c in changes)
+    assert not any("migrator.add_index" in c for c in changes), (
+        f"FK auto-index should not be re-emitted; got: {changes}"
+    )
+
+
+def test_diff_no_redundant_drop_index_for_removed_fk():
+    """Symmetric regression: removing a ForeignKeyField must not emit a
+    separate `migrator.drop_index(...)` call. `drop_column` removes the
+    field's auto-index implicitly.
+    """
+
+    class Tag(pw.Model):
+        name = pw.CharField()
+
+    class BookOld(pw.Model):
+        title = pw.CharField()
+        tag = pw.ForeignKeyField(Tag, null=True)
+
+        class Meta:
+            table_name = "book"
+
+    class BookNew(pw.Model):
+        title = pw.CharField()
+
+        class Meta:
+            table_name = "book"
+
+    changes = diff_model(BookNew, BookOld)
+    assert any("migrator.remove_fields" in c for c in changes)
+    assert not any("migrator.drop_index" in c for c in changes), (
+        f"FK auto-index should not be re-dropped; got: {changes}"
+    )
+
+
+def test_diff_no_redundant_index_for_added_unique_field():
+    """`unique=True` on a field also triggers an implicit index in
+    `add_column` (the unique constraint is the index). A separate
+    `add_index(unique=True)` would collide on a fresh DB.
+    """
+
+    class WidgetOld(pw.Model):
+        name = pw.CharField()
+
+        class Meta:
+            table_name = "widget"
+
+    class WidgetNew(pw.Model):
+        name = pw.CharField()
+        slug = pw.CharField(unique=True)
+
+        class Meta:
+            table_name = "widget"
+
+    changes = diff_model(WidgetNew, WidgetOld)
+    assert any("migrator.add_fields" in c for c in changes)
+    assert not any("migrator.add_index" in c for c in changes), (
+        f"unique-field auto-index should not be re-emitted; got: {changes}"
+    )
+
+
+def test_diff_composite_index_on_added_fields_still_emitted():
+    """Negative case: a multi-column `Meta.indexes` entry covering newly
+    added fields must STILL be emitted explicitly. `add_column` only auto-
+    creates single-column indexes from field flags; composite indexes are
+    not created as a side effect of field additions.
+    """
+
+    class WidgetOld(pw.Model):
+        existing = pw.CharField()
+
+        class Meta:
+            table_name = "widget"
+
+    class WidgetNew(pw.Model):
+        existing = pw.CharField()
+        a = pw.CharField()
+        b = pw.CharField()
+
+        class Meta:
+            table_name = "widget"
+            indexes = ((("a", "b"), False),)
+
+    changes = diff_model(WidgetNew, WidgetOld)
+    assert any("migrator.add_index('widget', 'a', 'b'" in c for c in changes), (
+        f"Composite index over newly added fields must be emitted; got: {changes}"
+    )
 
 
 def test_diff_fk_on_delete(migrator):
