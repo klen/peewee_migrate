@@ -2,6 +2,8 @@
 
 	* feat: support peewee 4.4+
 	* feat: drop python 3.10 support
+	* fix: generate datetime field formats correctly
+	* fix: raise on unsupported index expressions instead of invalid migrations
 
 2026-03-12
 

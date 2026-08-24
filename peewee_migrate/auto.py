@@ -43,8 +43,8 @@ def fk_to_params(field: pw.ForeignKeyField) -> TParams:
 def dtf_to_params(field: pw.DateTimeField) -> TParams:
     """Get params from the given datetime field."""
     params = {}
-    if not isinstance(field.formats, list):
-        params["formats"] = field.formats
+    if field.formats != pw.DateTimeField().formats:
+        params["formats"] = repr(field.formats)
 
     return params
 
@@ -410,20 +410,35 @@ def change_not_null(model_type: TModelType, name: str, *, null: bool) -> str:
     return "migrator.%s('%s', %s)" % (operation, meta.table_name, repr(name))
 
 
+def _index_fields(idx: pw.ModelIndex) -> list[str]:
+    """Return field names for an index, raising on unsupported expressions."""
+    fields = idx._expressions  # type: ignore[]
+    names: list[str] = []
+    for field in fields:
+        if isinstance(field, pw.Field):
+            names.append(field.name)
+        elif isinstance(field, str):
+            names.append(field)
+        else:
+            raise TypeError(
+                "Cannot generate migration for index %r: unsupported expression %r"
+                % (getattr(idx, "_name", None), field)
+            )
+    return names
+
+
 def add_index(idx: pw.ModelIndex) -> str:
     """Generate migrations."""
     meta = idx._model._meta  # type: ignore[]
     unique = idx._unique  # type: ignore[]
-    fields = idx._expressions  # type: ignore[]
-    names = ", ".join(f"'{f.name}'" for f in fields)
+    names = ", ".join(f"'{name}'" for name in _index_fields(idx))
     return f"migrator.add_index('{meta.table_name}', {names}, unique={unique})"
 
 
 def drop_index(idx: pw.ModelIndex) -> str:
     """Generate migrations."""
     meta = idx._model._meta  # type: ignore[]
-    fields = idx._expressions  # type: ignore[]
-    names = ", ".join(f"'{f.name}'" for f in fields)
+    names = ", ".join(f"'{name}'" for name in _index_fields(idx))
     return f"migrator.drop_index('{meta.table_name}', {names})"
 
 

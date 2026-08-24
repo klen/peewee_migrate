@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 
 import peewee as pw
+import pytest
 from playhouse.postgres_ext import (
     ArrayField,
     BinaryJSONField,
@@ -82,6 +83,15 @@ def test_field_to_code():
 def test_field_to_code_default():
     code = field_to_code(Person.is_deleted)
     assert code == "is_deleted = pw.BooleanField(default=False)"
+
+
+def test_field_to_code_datetime_formats():
+    class Test(pw.Model):
+        dt = pw.DateTimeField(formats="%Y-%m-%d")
+        dts = pw.DateTimeField(formats=["%Y-%m-%d", "%d/%m/%Y"])
+
+    assert field_to_code(Test.dt) == "dt = pw.DateTimeField(formats='%Y-%m-%d')"
+    assert field_to_code(Test.dts) == "dts = pw.DateTimeField(formats=['%Y-%m-%d', '%d/%m/%Y'])"
 
 
 def test_field_to_code_self_referencing_foreign_key_on_model_create():
@@ -271,6 +281,27 @@ def test_diff_model_index():
 
     changes = diff_model(Order2, Order1)
     assert changes
+
+
+def test_diff_model_index_expression():
+    class Order1(pw.Model):
+        active = pw.BooleanField()
+        order_id = pw.CharField()
+
+        class Meta:
+            table_name = "order"
+
+    class Order2(pw.Model):
+        active = pw.BooleanField()
+        order_id = pw.CharField()
+
+        class Meta:
+            table_name = "order"
+
+    Order2.add_index(pw.fn.Lower(Order2.active), Order2.order_id)
+
+    with pytest.raises(TypeError, match="unsupported expression"):
+        diff_model(Order2, Order1)
 
 
 def test_diff_self_referencing_foreign_key_on_field_added():
