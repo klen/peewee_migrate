@@ -70,7 +70,7 @@ class Migrator:
         """Run operations."""
         for op in self.__ops__:
             if isinstance(op, Operation):
-                logger.info("%s %s", op.method, op.args)
+                logger.info("%s %s", op.fn.__name__, op.args)
                 op.run()
             else:
                 logger.info("Run %s", op.__name__)
@@ -109,7 +109,7 @@ class Migrator:
 
     def sql(self, sql: str, *params):
         """Execute raw SQL."""
-        op = cast("Operation", self.__migrator__.sql(sql, *params))
+        op = self.__migrator__.sql(sql, params or None)
         self.__ops__.append(op)
 
     def run(self, func: Callable, *args, **kwargs):
@@ -141,7 +141,10 @@ class Migrator:
         """
         model = self.__get_model__(model)
         self.orm.remove(model)
-        self.__ops__.append(self.__migrator__.drop_table(model, cascade=cascade))
+        meta = model._meta  # type: ignore[]
+        self.__ops__.append(
+            self.__migrator__.drop_table(meta.table_name, cascade=cascade, schema=meta.schema)
+        )
 
     def add_fields(self, model: str | TModelType, **fields: pw.Field) -> TModelType:
         """Change fields.
@@ -405,14 +408,10 @@ class SchemaMigrator(ScM):
 
         raise ValueError("Unsupported database: %s" % database)
 
-    def drop_table(self, model: TModelType, *, cascade: bool = True) -> Callable[[], Any]:
-        """Drop table."""
-        return lambda: model.drop_table(cascade=cascade)
-
     @operation
-    def sql(self, sql: str, *params) -> SQL:
+    def sql(self, sql: str, params: Any = None) -> SQL:
         """Execute raw SQL."""
-        return SQL(sql, *params)
+        return SQL(sql, params)
 
     @operation
     def change_column(
@@ -452,12 +451,19 @@ class SchemaMigrator(ScM):
         field.null = field_null
         return [ctx]
 
-    def alter_add_column(
-        self, table: str, column_name: str, field: pw.Field, **kwargs
+    def alter_add_column(  # type: ignore[bad-override]
+        self,
+        table: str,
+        column_name: str,
+        field: pw.Field,
+        allow_not_null: bool = False,  # noqa: FBT001, FBT002
+        **kwargs,
     ) -> Operation:
         """Fix fieldname for ForeignKeys."""
         name = field.name
-        op = super(SchemaMigrator, self).alter_add_column(table, column_name, field, **kwargs)
+        op = super(SchemaMigrator, self).alter_add_column(
+            table, column_name, field, allow_not_null=allow_not_null, **kwargs
+        )
         if isinstance(field, pw.ForeignKeyField):
             field.name = name
         return op
@@ -500,9 +506,18 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
 class SqliteMigrator(SchemaMigrator, SqM):
     """Support the migrations in sqlite."""
 
-    def drop_table(self, model: TModelType, *, cascade: bool = True) -> Callable:
+    @operation
+    def drop_table(
+        self,
+        table: str,
+        safe: bool = False,  # noqa: FBT001, FBT002
+        cascade: bool = False,  # noqa: FBT001, FBT002
+        schema: str | None = None,
+    ) -> Operation:
         """Sqlite doesnt support cascade syntax by default."""
-        return lambda: model.drop_table(cascade=False)
+        return super(SqliteMigrator, self).drop_table(
+            table, safe=safe, cascade=False, schema=schema
+        )
 
     def alter_change_column(
         self, table: str, column: str, field: pw.Field

@@ -38,7 +38,7 @@ def void(m, d, fake=None):
 class BaseRouter(object):
     """Abstract base class for router."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         database: pw.Database | pw.Proxy,
         migrate_table=MIGRATE_TABLE,
@@ -101,7 +101,7 @@ class BaseRouter(object):
         migrate = rollback = ""
         if auto:
             # Need to append the CURDIR to the path for import to work.
-            sys.path.append(f"{ CURDIR }")
+            sys.path.append(f"{CURDIR}")
             models = auto if isinstance(auto, list) else [auto]
             if not all(_check_model(m) for m in models):
                 try:
@@ -154,7 +154,8 @@ class BaseRouter(object):
 
     def clear(self):
         """Clear migrations."""
-        self.model.delete().execute()
+        delete = self.model.delete()  # type: ignore[not-callable]
+        delete.execute()
 
     def compile(
         self, name: str, migrate: str = "", rollback: str = "", num: int | None = None
@@ -162,7 +163,7 @@ class BaseRouter(object):
         """Create a migration."""
         raise NotImplementedError
 
-    def read(self, name: str):
+    def read(self, name: str) -> tuple[Any, Any]:
         """Read migration from file."""
         raise NotImplementedError
 
@@ -204,13 +205,13 @@ class BaseRouter(object):
                     self.logger.info("Rolling back %s", name)
                     rollback(migrator, self.database, fake=fake)
                     migrator()
-                    self.model.delete().where(self.model.name == name).execute()
+                    delete = self.model.delete()  # type: ignore[not-callable]
+                    delete.where(self.model.name == name).execute()
 
                 self.logger.info("Done %s", name)
                 return name
 
         except Exception:
-            self.database.rollback()
             operation = "Migration" if not downgrade else "Rollback"
             self.logger.exception("%s failed: %s", operation, name)
             raise

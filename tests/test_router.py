@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import peewee as pw
+import pytest
 
 from peewee_migrate.cli import get_router
 from peewee_migrate.models import MigrateHistory
@@ -98,3 +99,19 @@ def test_router_compile(tmpdir):
     with migrations.join("001_test_router_compile.py").open() as f:
         content = f.read()
         assert content
+
+
+def test_run_one_error_propagates(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    migrate_dir.mkdir()
+    (migrate_dir / "001_boom.py").write_text(
+        "def migrate(migrator, database, **kwargs):\n"
+        "    raise RuntimeError('boom')\n"
+        "\n"
+        "def rollback(migrator, database, **kwargs):\n"
+        "    pass\n"
+    )
+    router = get_router(str(migrate_dir), "sqlite:///:memory:")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        router.run()

@@ -97,6 +97,19 @@ def test_migrator(router):  # noqa: PLR0915
     assert not Order._meta.indexes  # type: ignore[]
 
 
+def test_sql_params(migrator: Migrator, models):
+    Customer, Order = models
+    customer = Customer.create(name="c", age=1)
+    Order.create(number="1", uid="u1", customer=customer)
+    Order.create(number="2", uid="u2", customer=customer)
+
+    migrator.sql('UPDATE "order" SET number = ? WHERE uid = ?', "3", "u1")
+    migrator()
+
+    assert Order.get(Order.uid == "u1").number == "3"
+    assert Order.get(Order.uid == "u2").number == "2"
+
+
 def test_add_fields(migrator: Migrator, models):
     _, Order = models
     meta = Order._meta  # type: ignore[]
@@ -133,6 +146,15 @@ def test_remove_fk(migrator: Migrator):
     migrator.remove_fields(Order, "customer", legacy=True)
     assert "customer" not in meta.fields
     migrator()
+
+
+def test_remove_model(migrator: Migrator, database):
+    assert "customer" in database.get_tables()
+
+    migrator.remove_model("customer", cascade=True)
+    migrator()
+
+    assert "customer" not in database.get_tables()
 
 
 def test_rename_field(migrator: Migrator):
@@ -222,7 +244,7 @@ def test_add_field_unique(migrator: Migrator):
     migrator.add_fields("test_table", field2=pw.CharField(unique=True))
     ops = migrator.__ops__
     assert len(ops) == 1
-    assert ops[0].method == "add_column"  # type: ignore[union-attr]
+    assert ops[0].fn.__name__ == "add_column"  # type: ignore[union-attr]
 
 
 def test_change_field_constraint(migrator: Migrator):

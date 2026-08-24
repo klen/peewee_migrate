@@ -21,7 +21,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Utilities",
 ]
-dependencies = ["peewee", "click"]
+dependencies = ["peewee>=4.4", "click"]
 
 [project.urls]
 Homepage = "https://github.com/klen/peewee_migrate"
@@ -52,7 +52,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ANN", "ARG", "COM", "D", "N", "UP", "S", "SLF", "INP001", "PLR2004", "TD", "FIX"]
+ignore = ["ANN", "ARG", "COM", "CPY", "D", "N", "UP", "S", "SLF", "INP001", "PLR2004", "TD", "FIX"]
 
 [tool.pyrefly]
 project-includes = ["peewee_migrate"]

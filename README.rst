@@ -32,7 +32,7 @@ Peewee Migrate -- A simple migration engine for Peewee_ ORM
 Requirements
 =============
 
-- peewee >= 3.10
+- peewee >= 4.4
 
 Dependency Note
 ---------------
