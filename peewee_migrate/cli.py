@@ -25,7 +25,7 @@ VERBOSE: list[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
 
 def get_router(
     directory: str | Path | None = None,
-    database: str | None = None,
+    database: str | pw.Database | pw.Proxy | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
 ) -> Router:
@@ -49,7 +49,7 @@ def get_router(
         except IOError:
             pass
 
-    db: pw.Database | None = connect(database) if isinstance(database, str) else None
+    db: pw.Database | pw.Proxy | None = connect(database) if isinstance(database, str) else database
 
     logger.setLevel(logging_level)
 
@@ -142,7 +142,7 @@ def create(  # noqa: PLR0913
     required=False,
     default=1,
     type=int,
-    help="Number of last migrations to be rolled back.Ignored in case of non-empty name",
+    help="Number of last migrations to be rolled back.",
 )
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")

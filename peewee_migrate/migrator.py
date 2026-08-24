@@ -164,6 +164,11 @@ class Migrator:
                 )
             )
 
+            if field.null and field.default is not None:
+                self.__ops__.append(
+                    self.__migrator__.apply_default(meta.table_name, field.column_name, field)
+                )
+
         return model
 
     def change_fields(self, model: str | TModelType, **fields: pw.Field) -> TModelType:

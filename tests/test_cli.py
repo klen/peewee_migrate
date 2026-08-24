@@ -1,3 +1,4 @@
+import peewee as pw
 import pytest
 from click.testing import CliRunner
 
@@ -40,6 +41,13 @@ def migrations(router):
 @pytest.fixture
 def migrations_str(migrations):
     return ", ".join(migrations)
+
+
+def test_get_router_with_database_object():
+    database = pw.SqliteDatabase(":memory:")
+    router = get_router(None, database)
+
+    assert router.database is database
 
 
 def test_help():

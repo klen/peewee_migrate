@@ -118,6 +118,17 @@ def test_add_fields(migrator: Migrator, models):
     migrator()
 
 
+def test_add_fields_default(migrator: Migrator, models):
+    Customer, _ = models
+    customer = Customer.create(name="c", age=1)
+
+    migrator.add_fields(Customer, status=pw.CharField(default="new", null=True))
+    migrator()
+
+    customer = Customer.get(Customer.id == customer.id)
+    assert customer.status == "new"
+
+
 def test_add_fk(migrator: Migrator, models):
     Customer, Order = models
     meta = Order._meta  # type: ignore[]
