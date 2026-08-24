@@ -8,6 +8,7 @@
 	* fix: apply default when adding nullable fields
 	* fix: rollback --count help text
 	* fix: run migrations in a migration context (sqlite foreign_keys=1)
+	* feat: allow add_fields to add NOT NULL columns without default
 
 2026-03-12
 

@@ -147,10 +147,13 @@ class Migrator:
             self.__migrator__.drop_table(meta.table_name, cascade=cascade, schema=meta.schema)
         )
 
-    def add_fields(self, model: str | TModelType, **fields: pw.Field) -> TModelType:
+    def add_fields(
+        self, model: str | TModelType, *, allow_not_null: bool = False, **fields: pw.Field
+    ) -> TModelType:
         """Change fields.
 
         :param model: Model class or table name
+        :param allow_not_null: Allow adding NOT NULL columns without a default.
 
         >> migrator.change_fields(Model, name=pw.CharField(null=True))
         """
@@ -161,7 +164,7 @@ class Migrator:
 
             self.__ops__.append(
                 self.__migrator__.add_column(  # type: ignore[]
-                    meta.table_name, field.column_name, field
+                    meta.table_name, field.column_name, field, allow_not_null=allow_not_null
                 )
             )
 

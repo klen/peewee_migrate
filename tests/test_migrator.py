@@ -129,6 +129,14 @@ def test_add_fields_default(migrator: Migrator, models):
     assert customer.status == "new"
 
 
+def test_add_fields_allow_not_null(migrator: Migrator):
+    migrator.add_fields("customer", blocked=pw.BooleanField(null=False), allow_not_null=True)
+    migrator()
+
+    field = migrator.orm["customer"]._meta.fields["blocked"]  # type: ignore[]
+    assert not field.null
+
+
 def test_add_fields_with_foreign_keys():
     db = pw.SqliteDatabase(":memory:", pragmas={"foreign_keys": 1})
 

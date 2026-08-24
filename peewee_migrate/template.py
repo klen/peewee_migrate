@@ -14,7 +14,7 @@ Some examples (model - class or model name)::
     > migrator.run(func, *args, **kwargs)           # Run python function with the given args
     > migrator.create_model(Model)                  # Create a model (could be used as decorator)
     > migrator.remove_model(model, cascade=True)    # Remove a model
-    > migrator.add_fields(model, **fields)          # Add fields to a model
+    > migrator.add_fields(model, **fields)          # Add fields (allow_not_null=True skips default)
     > migrator.change_fields(model, **fields)       # Change fields
     > migrator.remove_fields(model, *field_names, cascade=True)
     > migrator.rename_field(model, old_field_name, new_field_name)
