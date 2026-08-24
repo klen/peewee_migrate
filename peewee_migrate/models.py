@@ -11,7 +11,7 @@ class MigrateHistory(pw.Model):
 
     id = pw.AutoField()
     name = pw.CharField()
-    migrated_at = pw.DateTimeField(default=lambda: dt.datetime.now(dt.timezone.utc))
+    migrated_at = pw.DateTimeField(default=lambda: dt.datetime.now(dt.UTC))
 
     def __str__(self) -> str:
         """String representation."""

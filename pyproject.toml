@@ -3,7 +3,7 @@ name = "peewee-migrate"
 version = "1.15.0"
 description = "Support for migrations in Peewee ORM"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 readme = "README.rst"
 license = "MIT"
 keywords = ["peewee", "migrations", "orm"]
@@ -13,7 +13,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -48,7 +47,7 @@ module-root = ""
 [tool.ruff]
 include = ["peewee_migrate/*", "tests/**/*"]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["ALL"]

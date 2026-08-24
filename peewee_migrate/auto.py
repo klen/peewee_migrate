@@ -343,7 +343,7 @@ def compare_fields(field1: pw.Field, field2: pw.Field) -> dict:
     return dict(set(params1.items()) - set(params2.items()))
 
 
-def change_fields(model_cls: TModelType, *fields: pw.Tuple[pw.Field, dict]) -> str:
+def change_fields(model_cls: TModelType, *fields: tuple[pw.Field, dict]) -> str:
     """Generate migrations to change fields."""
     meta = model_cls._meta  # type: ignore[]
     return "migrator.change_fields('%s', %s)" % (

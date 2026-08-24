@@ -1,3 +1,28 @@
+2026-08-24
+
+	* feat: support peewee 4.4+
+	* feat: drop python 3.10 support
+
+2026-03-12
+
+	* fix: types/errors
+
+2026-02-23
+
+	* fix: replace deprecated datetime.utcnow() with timezone-aware equivalent
+
+2025-11-25
+
+	* feat: tune migrations
+
+2025-11-05
+
+	* fix: ignore peewee defaults for migrations
+
+2025-10-31
+
+	* feat: drop py3.8, update indexes
+
 2024-07-17
 	* feat: add support for python 3.12
 
