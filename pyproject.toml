@@ -1,6 +1,6 @@
 [project]
 name = "peewee-migrate"
-version = "2.0.0"
+version = "2.1.0"
 description = "Support for migrations in Peewee ORM"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 requires-python = ">=3.11,<4"
@@ -61,7 +61,7 @@ project-excludes = ["tests", "pyproject.toml"]
 addopts = "-svx"
 
 [tool.bumpversion]
-current_version = "2.0.0"
+current_version = "2.1.0"
 commit = false
 tag = false
 
