@@ -129,6 +129,31 @@ def test_add_fields_default(migrator: Migrator, models):
     assert customer.status == "new"
 
 
+def test_add_fields_with_foreign_keys():
+    db = pw.SqliteDatabase(":memory:", pragmas={"foreign_keys": 1})
+
+    class User(pw.Model):
+        class Meta:
+            database = db
+
+    class TgAccount(pw.Model):
+        owner = pw.ForeignKeyField(User)
+
+        class Meta:
+            database = db
+
+    User.create_table()
+    TgAccount.create_table()
+    user = User.create()
+    TgAccount.create(owner=user)
+
+    migrator = Migrator(db)
+    migrator.add_fields(User, name=pw.CharField(default="John"))
+    migrator()
+
+    assert User.get(User.id == user.id).name == "John"
+
+
 def test_add_fk(migrator: Migrator, models):
     Customer, Order = models
     meta = Order._meta  # type: ignore[]

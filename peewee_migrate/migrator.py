@@ -68,14 +68,15 @@ class Migrator:
 
     def __call__(self):
         """Run operations."""
-        for op in self.__ops__:
-            if isinstance(op, Operation):
-                logger.info("%s %s", op.fn.__name__, op.args)
-                op.run()
-            else:
-                logger.info("Run %s", op.__name__)
-                op()
-        self.__ops__ = []
+        with self.__migrator__.migration_context():
+            for op in self.__ops__:
+                if isinstance(op, Operation):
+                    logger.info("%s %s", op.fn.__name__, op.args)
+                    op.run()
+                else:
+                    logger.info("Run %s", op.__name__)
+                    op()
+            self.__ops__ = []
 
     def __iter__(self):
         """Iterate over models."""

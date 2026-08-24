@@ -7,6 +7,7 @@
 	* fix: allow pre-configured database objects in CLI (sqlcipher etc.)
 	* fix: apply default when adding nullable fields
 	* fix: rollback --count help text
+	* fix: run migrations in a migration context (sqlite foreign_keys=1)
 
 2026-03-12
 
