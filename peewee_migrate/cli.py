@@ -15,6 +15,8 @@ from .models import MIGRATE_TABLE
 from .router import Router
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import peewee as pw
 
     from peewee_migrate.types import TParams
@@ -28,11 +30,12 @@ def get_router(
     database: str | pw.Database | pw.Proxy | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
+    ignore: Iterable[str] | None = None,
 ) -> Router:
     """Load and initialize a router."""
     config: TParams = {}
     logging_level: str = VERBOSE[verbose]
-    ignore = schema = None
+    schema = None
 
     if directory:
         directory = Path(directory)
@@ -120,6 +123,11 @@ def migrate(  # noqa: PLR0913
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option(
+    "--ignore",
+    multiple=True,
+    help="Model name to ignore during autoscan. Repeat for multiple models.",
+)
 @click.option("-v", "--verbose", count=True)
 def create(  # noqa: PLR0913
     name: str | None = None,
@@ -130,9 +138,12 @@ def create(  # noqa: PLR0913
     *,
     auto: bool = False,
     auto_source: str | None = None,
+    ignore: tuple[str, ...] = (),
 ):
     """Create a migration."""
-    router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
+    router: Router = get_router(
+        directory, database, migratetable or MIGRATE_TABLE, verbose, ignore or None
+    )
     router.create(name or "auto", auto=auto_source if auto and auto_source else auto)
 
 
