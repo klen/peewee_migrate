@@ -86,6 +86,7 @@ Create migration: ::
 
     Options:
         --auto                  FLAG  Scan sources and create db migrations automatically. Supports autodiscovery.
+        --ignore                TEXT  Model name to ignore during autoscan. Repeat for multiple models.
         --auto-source           TEXT  Set to python module path for changes autoscan (e.g. 'package.models'). Current directory will be recursively scanned by default.
         --database              TEXT  Database connection
         --directory             TEXT  Directory where migrations are stored
