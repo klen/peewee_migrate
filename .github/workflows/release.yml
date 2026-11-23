@@ -6,17 +6,24 @@ on:
     branches: [master]
     types: [completed]
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event.workflow_run.conclusion == 'success'
     steps:
-      - uses: actions/checkout@main
-      - uses: astral-sh/setup-uv@main
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
+          python-version: "3.11"
 
-      - name: Build Package
+      - name: Build and publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.pypi }}
         run: |
           uv build
-          uv publish --token ${{ secrets.pypi }}
+          uv publish

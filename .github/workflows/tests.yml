@@ -1,40 +1,91 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: tests
 
 on:
   pull_request:
     branches: [master, develop]
-
   push:
     branches: [master, develop]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - run: uv sync --locked
+      - name: Check typing
+        run: uv run pyrefly check
+      - name: Check code
+        run: uv run ruff check
+      - name: Check formatting
+        run: uv run ruff format --check
+      - name: Build package
+        run: uv build
+
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
-
     steps:
-      - uses: actions/checkout@main
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@main
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
-
-      - name: Setup dependencies
-        run: uv sync --locked --all-extras --dev
-
-      - name: Check typing
-        run: uv run pyrefly check
-
-      - name: Check code
-        run: uv run ruff check
-
+      - run: uv sync --locked
       - name: Test with pytest
+        run: uv run pytest
+
+  databases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PEEWEE_MIGRATE_PG: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      PEEWEE_MIGRATE_MYSQL: mysql://root:root@127.0.0.1:3306/test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - run: uv sync --locked
+      - name: Test against real databases
         run: uv run pytest
