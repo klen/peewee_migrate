@@ -42,7 +42,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.10.2,<0.11.0"]
+requires = ["uv_build>=0.10.2,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.uv]
@@ -51,6 +51,7 @@ default-groups = "all"
 [tool.uv.build-backend]
 module-name = "peewee_migrate"
 module-root = ""
+source-include = ["tests/**"]
 
 [tool.ruff]
 include = ["peewee_migrate/*", "tests/**/*"]
