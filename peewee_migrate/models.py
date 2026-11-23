@@ -17,7 +17,7 @@ class MigrateHistory(pw.Model):
 
     def __str__(self) -> str:
         """String representation."""
-        return self.name  # type: ignore[]
+        return self.name
 
 
 MIGRATE_TABLE: Final = "migratehistory"

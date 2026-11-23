@@ -12,7 +12,7 @@ from functools import cached_property
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Final, Iterable
+from typing import TYPE_CHECKING, Any, Final, cast
 from unittest import mock
 
 import peewee as pw
@@ -25,21 +25,22 @@ from .models import MIGRATE_TABLE, MigrateHistory
 from .template import TEMPLATE
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
     from logging import Logger
 
-    from peewee_migrate.types import TModelType
+    from peewee_migrate.types import TAuto, TMigration, TModelType
 
 
 CLEAN_RE: Final = re.compile(r"\s+$", re.MULTILINE)
 LOCK_TIMEOUT: Final = 60
 
 
-def void(m, d, fake=None):
+def void(m: Migrator, d: pw.Database, fake: bool | None = None) -> None:  # noqa: FBT001
     return None
 
 
 @contextmanager
-def lock_migrations(database: pw.Database | pw.Proxy, table: str):
+def lock_migrations(database: pw.Database | pw.Proxy, table: str) -> Iterator[None]:
     """Keep other processes out of the migration run (Postgres and MySQL only).
 
     Waits up to LOCK_TIMEOUT seconds for another process to finish migrating. Sqlite has
@@ -84,12 +85,12 @@ class BaseRouter(object):
     def __init__(  # noqa: PLR0913, PLR0917
         self,
         database: pw.Database | pw.Proxy,
-        migrate_table=MIGRATE_TABLE,
+        migrate_table: str = MIGRATE_TABLE,
         ignore: Iterable[str] | None = None,
         schema: str | None = None,
         logger: Logger = logger,
         migrator_class: type[Migrator] = Migrator,
-    ):
+    ) -> None:
         """Initialize the router."""
         self.database = database
         self.migrate_table = migrate_table
@@ -108,7 +109,7 @@ class BaseRouter(object):
         # A subclass per router: binding the shared MigrateHistory would send every
         # router's history to whichever database was bound last.
         model: type[MigrateHistory] = type(MigrateHistory.__name__, (MigrateHistory,), {})
-        meta = model._meta  # type: ignore[]
+        meta = model._meta
         meta.database = self.database
         meta.table_name = self.migrate_table
         meta.schema = self.schema
@@ -139,7 +140,7 @@ class BaseRouter(object):
             self.run_one(name, migrator)
         return migrator
 
-    def create(self, name: str = "auto", *, auto: Any = False) -> str | None:
+    def create(self, name: str = "auto", *, auto: TAuto = False) -> str | None:
         """Create a migration.
 
         :param auto: Python module path to scan for models.
@@ -150,7 +151,7 @@ class BaseRouter(object):
             curdir = f"{Path.cwd()}"
             if curdir not in sys.path:
                 sys.path.append(curdir)
-            models = auto if isinstance(auto, list) else [auto]
+            models: list[Any] = auto if isinstance(auto, list) else [auto]
             if not all(_check_model(m) for m in models):
                 try:
                     modules = models
@@ -165,7 +166,7 @@ class BaseRouter(object):
                     return None
 
             if self.ignore:
-                models = [m for m in models if m._meta.name not in self.ignore]  # type: ignore[]
+                models = [m for m in models if m._meta.name not in self.ignore]
 
             for migration in self.diff:
                 self.run_one(migration, self.migrator, fake=True)
@@ -182,7 +183,7 @@ class BaseRouter(object):
         self.logger.info('Migration has been created as "%s"', name)
         return name
 
-    def merge(self, name: str = "initial"):
+    def merge(self, name: str = "initial") -> None:
         """Merge migrations into one."""
         with lock_migrations(self.database, self.migrate_table):
             migrator = Migrator(self.database)
@@ -202,7 +203,7 @@ class BaseRouter(object):
             self.logger.info('Migrations has been merged into "%s"', name)
             return None
 
-    def clear(self, keep: str | None = None):
+    def clear(self, keep: str | None = None) -> None:
         """Clear migrations."""
         delete = self.model.delete()  # type: ignore[not-callable]
         delete.execute()
@@ -213,7 +214,7 @@ class BaseRouter(object):
         """Create a migration."""
         raise NotImplementedError
 
-    def read(self, name: str) -> tuple[Any, Any]:
+    def read(self, name: str) -> tuple[TMigration, TMigration]:
         """Read migration from file."""
         raise NotImplementedError
 
@@ -287,7 +288,7 @@ class BaseRouter(object):
 
             return done
 
-    def rollback(self):
+    def rollback(self) -> None:
         """Rollback the latest migration."""
         with lock_migrations(self.database, self.migrate_table):
             done = self.done
@@ -308,10 +309,10 @@ class Router(BaseRouter):
 
     def __init__(
         self,
-        database,
+        database: pw.Database | pw.Proxy,
         migrate_dir: str | Path | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """Initialize the router."""
         super(Router, self).__init__(database, **kwargs)
         if isinstance(migrate_dir, str):
@@ -319,7 +320,7 @@ class Router(BaseRouter):
         self.migrate_dir = migrate_dir or Path.cwd() / "migrations"
 
     @property
-    def todo(self):
+    def todo(self) -> list[str]:
         """Scan migrations in file system."""
         if not self.migrate_dir.exists():
             self.logger.warning("Migration directory: %s does not exist.", self.migrate_dir)
@@ -329,7 +330,9 @@ class Router(BaseRouter):
             key=lambda name: int(name.split("_", 1)[0]),
         )
 
-    def compile(self, name, migrate="", rollback="", num=None) -> str:
+    def compile(
+        self, name: str, migrate: str = "", rollback: str = "", num: int | None = None
+    ) -> str:
         """Create a migration."""
         if num is None:
             num = max((int(name.split("_", 1)[0]) for name in self.todo), default=0)
@@ -342,7 +345,7 @@ class Router(BaseRouter):
 
         return name
 
-    def read(self, name):
+    def read(self, name: str) -> tuple[TMigration, TMigration]:
         """Read migration from file."""
         path = self.migrate_dir / (name + ".py")
         with path.open("r") as f:
@@ -352,7 +355,7 @@ class Router(BaseRouter):
             exec(code, scope, None)
             return scope.get("migrate", void), scope.get("rollback", void)
 
-    def clear(self, keep: str | None = None):
+    def clear(self, keep: str | None = None) -> None:
         """Remove migrations from fs."""
         for name in self.todo:
             if name != keep:
@@ -363,7 +366,12 @@ class Router(BaseRouter):
 class ModuleRouter(BaseRouter):
     """Module based router."""
 
-    def __init__(self, database, migrate_module="migrations", **kwargs):
+    def __init__(
+        self,
+        database: pw.Database | pw.Proxy,
+        migrate_module: str | ModuleType = "migrations",
+        **kwargs: Any,
+    ) -> None:
         """Initialize the router."""
         super(ModuleRouter, self).__init__(database, **kwargs)
 
@@ -372,7 +380,7 @@ class ModuleRouter(BaseRouter):
 
         self.migrate_module = migrate_module
 
-    def read(self, name):
+    def read(self, name: str) -> tuple[TMigration, TMigration]:
         """Read migrations from a module."""
         mod = getattr(self.migrate_module, name)
         return getattr(mod, "migrate", void), getattr(mod, "rollback", void)
@@ -382,11 +390,14 @@ def load_models(module: str | ModuleType) -> set[TModelType]:
     """Load models from given module."""
 
     modules = [module] if isinstance(module, ModuleType) else _import_submodules(module)
-    return {
-        m
-        for module in modules
-        for m in filter(_check_model, (getattr(module, name) for name in dir(module)))
-    }
+    return cast(
+        "set[TModelType]",
+        {
+            m
+            for module in modules
+            for m in filter(_check_model, (getattr(module, name) for name in dir(module)))
+        },
+    )
 
 
 def _import_submodules(
@@ -422,12 +433,14 @@ def _import_submodules(
     return modules
 
 
-def _check_model(obj):
+def _check_model(obj: object) -> bool:
     """Check object if it's a peewee model and unique."""
     return isinstance(obj, type) and issubclass(obj, pw.Model) and hasattr(obj, "_meta")
 
 
-def compile_migrations(migrator: Migrator, models: list[TModelType], *, reverse=False) -> str:
+def compile_migrations(
+    migrator: Migrator, models: list[TModelType], *, reverse: bool = False
+) -> str:
     """Compile migrations for given models."""
     source = list(migrator.orm)
     if reverse:

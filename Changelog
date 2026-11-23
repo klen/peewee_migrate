@@ -17,6 +17,7 @@
 	* fix: stop growing sys.path on every create --auto
 	* test: cover locking, conf.py errors, a failed merge, unknown columns
 	* test: run the migration round trip against real postgres and mysql in CI
+	* refactor: annotate the whole package, replace 58 blanket type ignores with 13 precise ones
 
 2026-08-24
 

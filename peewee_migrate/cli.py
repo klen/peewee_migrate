@@ -67,7 +67,7 @@ def get_router(
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """Migrate database with Peewee ORM."""
     logging.basicConfig(level=logging.INFO)
 
@@ -87,7 +87,7 @@ def migrate(  # noqa: PLR0913
     verbose: int = 0,
     *,
     fake: bool = False,
-):
+) -> None:
     """Migrate database."""
     router = get_router(directory, database, migratetable, verbose)
     click.secho("Migrating %s" % router.database.database, fg="blue")
@@ -126,7 +126,7 @@ def create(  # noqa: PLR0913
     *,
     auto: bool = False,
     auto_source: str | None = None,
-):
+) -> None:
     """Create a migration."""
     router: Router = get_router(directory, database, migratetable, verbose)
     router.create(name or "auto", auto=auto_source if auto and auto_source else auto)
@@ -150,7 +150,7 @@ def rollback(
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
     count: int = 1,
-):
+) -> None:
     """Rollback a migration with the given steps --count of last migrations as integer number"""
     router: Router = get_router(directory, database, migratetable, verbose)
     if len(router.done) < count:
@@ -171,7 +171,7 @@ def list(  # noqa: A001
     directory: str | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
-):
+) -> None:
     """List migrations."""
     router: Router = get_router(directory, database, migratetable, verbose)
     click.secho("List of migrations:\n", fg="blue")
@@ -194,7 +194,7 @@ def merge(
     directory: str | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
-):
+) -> None:
     """Merge migrations into one."""
     router: Router = get_router(directory, database, migratetable, verbose)
     router.merge()
