@@ -25,7 +25,7 @@ from .models import MIGRATE_TABLE, MigrateHistory
 from .template import TEMPLATE
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Generator, Iterable
     from logging import Logger
 
     from peewee_migrate.types import TAuto, TMigration, TModelType
@@ -40,7 +40,7 @@ def void(m: Migrator, d: pw.Database, fake: bool | None = None) -> None:  # noqa
 
 
 @contextmanager
-def lock_migrations(database: pw.Database | pw.Proxy, table: str) -> Iterator[None]:
+def lock_migrations(database: pw.Database | pw.Proxy, table: str) -> Generator[None]:
     """Keep other processes out of the migration run (Postgres and MySQL only).
 
     Waits up to LOCK_TIMEOUT seconds for another process to finish migrating. Sqlite has

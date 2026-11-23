@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Final, cast
 
 import peewee as pw
-from playhouse import postgres_ext
+from playhouse import postgres_ext  # type: ignore[untyped-import]
 from playhouse.reflection import Column as VanilaColumn
 
 from peewee_migrate.utils import model_fields_gen
