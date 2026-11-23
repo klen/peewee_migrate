@@ -46,7 +46,7 @@ outdated:
 # ==============
 
 VERSION	?= minor
-MAIN_BRANCH = master
+MAIN_BRANCH = main
 STAGE_BRANCH = develop
 
 .PHONY: release
