@@ -151,7 +151,7 @@ def rollback(
     verbose: int = 0,
     count: int = 1,
 ) -> None:
-    """Rollback a migration with the given steps --count of last migrations as integer number"""
+    """Rollback migrations."""
     router: Router = get_router(directory, database, migratetable, verbose)
     if len(router.done) < count:
         raise RuntimeError(
