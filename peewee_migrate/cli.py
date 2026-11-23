@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Pattern
+from typing import TYPE_CHECKING
 
 import click
 from playhouse.db_url import connect
@@ -19,7 +18,6 @@ if TYPE_CHECKING:
 
     from peewee_migrate.types import TParams
 
-CLEAN_RE: Pattern = re.compile(r"\s+$", re.MULTILINE)
 VERBOSE: list[str] = ["WARNING", "INFO", "DEBUG", "NOTSET"]
 
 
@@ -31,13 +29,14 @@ def get_router(
 ) -> Router:
     """Load and initialize a router."""
     config: TParams = {}
-    logging_level: str = VERBOSE[verbose]
+    logging_level: str = VERBOSE[min(verbose, len(VERBOSE) - 1)]
     ignore = schema = None
 
     if directory:
         directory = Path(directory)
-        try:
-            with directory.joinpath("conf.py").open() as cfg:
+        conf = directory / "conf.py"
+        if conf.exists():
+            with conf.open() as cfg:
                 code = compile(cfg.read(), "<string>", "exec", dont_inherit=True)
                 exec(code, config, config)
                 database = config.get("DATABASE", database)
@@ -45,9 +44,6 @@ def get_router(
                 schema = config.get("SCHEMA", schema)
                 migratetable = config.get("MIGRATE_TABLE", migratetable)
                 logging_level = config.get("LOGGING_LEVEL", logging_level).upper()
-
-        except IOError:
-            pass
 
     db: pw.Database | pw.Proxy | None = connect(database) if isinstance(database, str) else database
 
@@ -81,7 +77,7 @@ def cli():
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--fake", is_flag=True, default=False, help="Run migration as fake.")
-@click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def migrate(  # noqa: PLR0913
     name: str | None = None,
@@ -119,20 +115,20 @@ def migrate(  # noqa: PLR0913
 )
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
-@click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def create(  # noqa: PLR0913
     name: str | None = None,
     database: str | None = None,
     directory: str | None = None,
-    migratetable: str | None = None,
+    migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
     *,
     auto: bool = False,
     auto_source: str | None = None,
 ):
     """Create a migration."""
-    router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     router.create(name or "auto", auto=auto_source if auto and auto_source else auto)
 
 
@@ -146,17 +142,17 @@ def create(  # noqa: PLR0913
 )
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
-@click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def rollback(
     database: str | None = None,
     directory: str | None = None,
-    migratetable: str | None = None,
+    migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
     count: int = 1,
 ):
     """Rollback a migration with the given steps --count of last migrations as integer number"""
-    router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     if len(router.done) < count:
         raise RuntimeError(
             "Unable to rollback %s migrations from %s: %s" % (count, len(router.done), router.done)
@@ -168,16 +164,16 @@ def rollback(
 @cli.command()
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
-@click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def list(  # noqa: A001
     database: str | None = None,
     directory: str | None = None,
-    migratetable: str | None = None,
+    migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
 ):
     """List migrations."""
-    router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     click.secho("List of migrations:\n", fg="blue")
     for migration in router.done:
         click.echo(f"- [x] {migration}")
@@ -191,14 +187,14 @@ def list(  # noqa: A001
 @cli.command()
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
-@click.option("--migratetable", default="migratehistory", help="Migration table.")
+@click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
 def merge(
     database: str | None = None,
     directory: str | None = None,
-    migratetable: str | None = None,
+    migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
 ):
     """Merge migrations into one."""
-    router: Router = get_router(directory, database, migratetable or MIGRATE_TABLE, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose)
     router.merge()

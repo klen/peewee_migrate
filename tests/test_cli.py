@@ -100,6 +100,12 @@ def test_rollback(dir_option, db_option, router, migrations):
     assert router().done == migrations[:-4]
 
 
+def test_verbose_overflow(dir_option, db_option):
+    result = runner.invoke(cli, ["list", dir_option, db_option, "-vvvv"])
+
+    assert result.exit_code == 0
+
+
 def test_fake(dir_option, db_option, migrations, router):
     result = runner.invoke(cli, ["migrate", dir_option, db_option, "-v", "--fake"])
     assert result.exit_code == 0

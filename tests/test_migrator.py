@@ -263,6 +263,7 @@ def test_migrator_postgres(migrator, database):
         created_at = pw.DateField()
 
     assert User == migrator.orm["user"]
+    migrator()
 
     # Date -> DateTime
     migrator.change_fields("user", created_at=pw.DateTimeField())
@@ -291,6 +292,43 @@ def test_add_field_unique(migrator: Migrator):
     assert ops[0].fn.__name__ == "add_column"  # type: ignore[union-attr]
 
 
+def test_alter_model_created_in_same_migration():
+    db = pw.SqliteDatabase(":memory:")
+
+    class TestTable(pw.Model):
+        name = pw.CharField()
+
+        class Meta:
+            table_name = "test_table"
+
+    migrator = Migrator(db)
+    migrator.create_model(TestTable)
+
+    with pytest.raises(ValueError, match="created in this migration"):
+        migrator.add_fields("test_table", extra=pw.CharField(null=True))
+
+
+def test_unknown_column_raises(migrator: Migrator):
+    with pytest.raises(ValueError, match="Column typo not found in customer"):
+        migrator.add_index("customer", "typo")
+
+    with pytest.raises(ValueError, match="Column typo not found in customer"):
+        migrator.drop_index("customer", "typo")
+
+
+def test_change_field_drop_unique(migrator: Migrator, models):
+    Customer, Order = models
+    customer = Customer.create(name="c", age=1)
+
+    migrator.change_fields(Order, uid=pw.CharField(unique=False))
+    migrator()
+
+    assert not Order._meta.fields["uid"].unique
+    Order.create(number="1", uid="same", customer=customer)
+    Order.create(number="2", uid="same", customer=customer)
+    assert Order.select().count() == 2
+
+
 def test_change_field_constraint(migrator: Migrator):
     @migrator.create_model
     class TestTable(pw.Model):
@@ -316,6 +354,19 @@ def test_change_field_constraint(migrator: Migrator):
     tt.insert(field_with_check="opt3").execute()
     with pytest.raises(pw.IntegrityError):
         tt.insert(field_with_check="opt4").execute()
+
+
+@pytest.mark.parametrize("dburl", ["postgres:///fake"])
+def test_change_field_null(migrator, database):
+    @migrator.create_model
+    class Thing(pw.Model):
+        name = pw.CharField()
+
+    migrator()
+    migrator.change_fields("thing", name=pw.CharField(null=True))
+    migrator()
+
+    assert 'ALTER TABLE "thing" ALTER COLUMN "name" DROP NOT NULL' in database.cursor().queries
 
 
 @pytest.mark.parametrize("dburl", ["postgres:///fake"])

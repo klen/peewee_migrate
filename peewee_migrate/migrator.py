@@ -64,6 +64,7 @@ class Migrator:
 
         self.__database__ = database
         self.__ops__: list[Operation | Callable] = []
+        self.__created__: set[str] = set()
         self.__migrator__ = SchemaMigrator.from_database(database)
 
     def __call__(self):
@@ -76,7 +77,12 @@ class Migrator:
                 else:
                     logger.info("Run %s", op.__name__)
                     op()
-            self.__ops__ = []
+            self.reset()
+
+    def reset(self):
+        """Forget the queued operations."""
+        self.__ops__ = []
+        self.__created__ = set()
 
     def __iter__(self):
         """Iterate over models."""
@@ -100,13 +106,22 @@ class Migrator:
         """Get model by name."""
         if isinstance(model, str):
             if model in self.orm.__models__:
-                return self.orm.__models__[model]
-            if model in self.orm.__tables__:
-                return self.orm[model]
+                found: TVModelType | TModelType = self.orm.__models__[model]
+            elif model in self.orm.__tables__:
+                found = self.orm[model]
+            else:
+                raise ValueError("Model %s not found" % model)
+        else:
+            found = model
 
-            raise ValueError("Model %s not found" % model)
+        table_name = found._meta.table_name  # type: ignore[]
+        if table_name in self.__created__:
+            raise ValueError(
+                "Model %s is created in this migration: change it in a separate migration"
+                % table_name
+            )
 
-        return model
+        return found
 
     def sql(self, sql: str, *params):
         """Execute raw SQL."""
@@ -129,6 +144,7 @@ class Migrator:
         model_cls = cast("type[pw.Model]", model)
 
         meta.database = self.__database__
+        self.__created__.add(meta.table_name)
         self.__ops__.append(model_cls.create_table)
         return model
 
@@ -231,7 +247,7 @@ class Migrator:
                 meta.indexes.append(index)
                 self.__ops__.append(self.__migrator__.add_index(meta.table_name, *index))
             else:
-                index = field.column_name
+                index = make_index_name(meta.table_name, [field.column_name])
                 with suppress(ValueError):
                     meta.indexes.remove(((field.column_name,), True))
                 self.__ops__.append(self.__migrator__.drop_index(meta.table_name, index))
@@ -322,6 +338,8 @@ class Migrator:
         columns_ = []
         for col in columns:
             field = meta.fields.get(col)
+            if not field:
+                raise ValueError("Column %s not found in %s" % (col, meta.table_name))
 
             if len(columns) == 1:
                 field.unique = unique
@@ -342,7 +360,7 @@ class Migrator:
         for col in columns:
             field = meta.fields.get(col)
             if not field:
-                continue
+                raise ValueError("Column %s not found in %s" % (col, meta.table_name))
 
             if len(columns) == 1:
                 field.unique = field.index = False
@@ -507,6 +525,8 @@ class PostgresqlMigrator(SchemaMigrator, PgM):
         ctx = self._alter_table(ctx, table).literal(" ALTER COLUMN ").sql(ddl)
         field.null, field.constraints = fn, fc
         res = [ctx]
+        if field.null:
+            res.append(self.drop_not_null(table, column))
         if field.default is not None:
             res.append(self.add_default(table, column, field))
         return res
@@ -545,10 +565,13 @@ class SyncContext:
     def __init__(self, migrator):
         self.migrator = migrator
         self.ops = None
+        self.created = None
 
     def __enter__(self):
         self.ops = list(self.migrator.__ops__)
+        self.created = set(self.migrator.__created__)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.migrator.__ops__ = self.ops
+        self.migrator.__created__ = self.created

@@ -5,6 +5,9 @@ from __future__ import annotations
 import pkgutil
 import re
 import sys
+import time
+import zlib
+from contextlib import contextmanager
 from functools import cached_property
 from importlib import import_module
 from pathlib import Path
@@ -13,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Final, Iterable
 from unittest import mock
 
 import peewee as pw
+from playhouse.migrate import MySQLDatabase, PostgresqlDatabase
 
 from .auto import NEWLINE, diff_many
 from .logs import logger
@@ -27,12 +31,51 @@ if TYPE_CHECKING:
 
 
 CLEAN_RE: Final = re.compile(r"\s+$", re.MULTILINE)
-CURDIR: Final = Path.cwd()
-DEFAULT_MIGRATE_DIR: Final = CURDIR / "migrations"
+LOCK_TIMEOUT: Final = 60
 
 
 def void(m, d, fake=None):
     return None
+
+
+@contextmanager
+def lock_migrations(database: pw.Database | pw.Proxy, table: str):
+    """Keep other processes out of the migration run (Postgres and MySQL only).
+
+    Waits up to LOCK_TIMEOUT seconds for another process to finish migrating. Sqlite has
+    no advisory lock, and holding one transaction for the whole run would disable the
+    `foreign_keys` pragma used by the migrator; the unique history name stays the guard
+    there.
+    """
+    db = database.obj if isinstance(database, pw.Proxy) else database
+    if isinstance(db, PostgresqlDatabase):
+        key = zlib.crc32(table.encode())
+        deadline = time.monotonic() + LOCK_TIMEOUT
+        while True:
+            locked = db.execute_sql("SELECT pg_try_advisory_lock(%s)", (key,)).fetchone()
+            if locked and locked[0]:
+                break
+            if time.monotonic() >= deadline:
+                msg = "Could not acquire the migration lock in %s seconds" % LOCK_TIMEOUT
+                raise RuntimeError(msg)
+            time.sleep(1)
+        try:
+            yield
+        finally:
+            db.execute_sql("SELECT pg_advisory_unlock(%s)", (key,))
+    elif isinstance(db, MySQLDatabase):
+        # GET_LOCK is server-wide, so the database name has to be part of the lock name.
+        lock_name = f"{db.database}:{table}"
+        locked = db.execute_sql("SELECT GET_LOCK(%s, %s)", (lock_name, LOCK_TIMEOUT)).fetchone()
+        if not locked or locked[0] != 1:
+            msg = "Could not acquire the migration lock in %s seconds" % LOCK_TIMEOUT
+            raise RuntimeError(msg)
+        try:
+            yield
+        finally:
+            db.execute_sql("SELECT RELEASE_LOCK(%s)", (lock_name,))
+    else:
+        yield
 
 
 class BaseRouter(object):
@@ -61,13 +104,16 @@ class BaseRouter(object):
 
     @cached_property
     def model(self) -> type[MigrateHistory]:
-        """Initialize and cache MigrationHistory model."""
-        meta = MigrateHistory._meta  # type: ignore[]
+        """Initialize and cache a MigrationHistory model for this router's database."""
+        # A subclass per router: binding the shared MigrateHistory would send every
+        # router's history to whichever database was bound last.
+        model: type[MigrateHistory] = type(MigrateHistory.__name__, (MigrateHistory,), {})
+        meta = model._meta  # type: ignore[]
         meta.database = self.database
         meta.table_name = self.migrate_table
         meta.schema = self.schema
-        MigrateHistory.create_table(safe=True)
-        return MigrateHistory
+        model.create_table(safe=True)
+        return model
 
     @property
     def todo(self) -> Iterable[str]:
@@ -100,15 +146,17 @@ class BaseRouter(object):
         """
         migrate = rollback = ""
         if auto:
-            # Need to append the CURDIR to the path for import to work.
-            sys.path.append(f"{CURDIR}")
+            # Local packages have to be importable for autodiscovery to work.
+            curdir = f"{Path.cwd()}"
+            if curdir not in sys.path:
+                sys.path.append(curdir)
             models = auto if isinstance(auto, list) else [auto]
             if not all(_check_model(m) for m in models):
                 try:
                     modules = models
                     if isinstance(auto, bool):
                         modules = [
-                            m for _, m, ispkg in pkgutil.iter_modules([f"{CURDIR}"]) if ispkg
+                            m for _, m, ispkg in pkgutil.iter_modules([f"{Path.cwd()}"]) if ispkg
                         ]
                     models = [m for module in modules for m in load_models(module)]
 
@@ -136,23 +184,25 @@ class BaseRouter(object):
 
     def merge(self, name: str = "initial"):
         """Merge migrations into one."""
-        migrator = Migrator(self.database)
-        migrate = compile_migrations(migrator, list(self.migrator.orm))
-        if not migrate:
-            return self.logger.error("Can't merge migrations")
+        with lock_migrations(self.database, self.migrate_table):
+            migrator = Migrator(self.database)
+            migrate = compile_migrations(migrator, list(self.migrator.orm))
+            if not migrate:
+                return self.logger.error("Can't merge migrations")
 
-        self.clear()
+            self.logger.info('Merge migrations into "%s"', name)
+            rollback = compile_migrations(self.migrator, [])
+            name = self.compile(name, migrate, rollback, 0)
 
-        self.logger.info('Merge migrations into "%s"', name)
-        rollback = compile_migrations(self.migrator, [])
-        name = self.compile(name, migrate, rollback, 0)
+            # Write the merged migration before dropping the old ones.
+            self.clear(keep=name)
 
-        migrator = Migrator(self.database)
-        self.run_one(name, migrator, fake=True, force=True)
-        self.logger.info('Migrations has been merged into "%s"', name)
-        return None
+            migrator = Migrator(self.database)
+            self.run_one(name, migrator, fake=True, force=True)
+            self.logger.info('Migrations has been merged into "%s"', name)
+            return None
 
-    def clear(self):
+    def clear(self, keep: str | None = None):
         """Clear migrations."""
         delete = self.model.delete()  # type: ignore[not-callable]
         delete.execute()
@@ -181,7 +231,6 @@ class BaseRouter(object):
             migrate, rollback = self.read(name)
             if fake:
                 mocked_cursor = mock.Mock()
-                mocked_cursor.fetch_one.return_value = None
                 with (
                     mock.patch("peewee.Model.select"),
                     mock.patch("peewee.Database.execute_sql", return_value=mocked_cursor),
@@ -192,7 +241,7 @@ class BaseRouter(object):
                     self.model.create(name=name)
                     self.logger.info("Done %s", name)
 
-                migrator.__ops__ = []
+                migrator.reset()
                 return name
 
             with self.database.transaction():
@@ -220,37 +269,42 @@ class BaseRouter(object):
         """Run migrations."""
         self.logger.info("Starting migrations")
 
-        done: list[str] = []
-        diff = self.diff
-        if not diff:
-            self.logger.info("There is nothing to migrate")
+        with lock_migrations(self.database, self.migrate_table):
+            done: list[str] = []
+            diff = self.diff
+            if name and name not in diff:
+                raise ValueError("Migration %s is not pending" % name)
+
+            if not diff:
+                self.logger.info("There is nothing to migrate")
+                return done
+
+            migrator = self.migrator
+            for mname in diff:
+                done.append(self.run_one(mname, migrator, fake=fake, force=fake))
+                if name and name == mname:
+                    break
+
             return done
-
-        migrator = self.migrator
-        for mname in diff:
-            done.append(self.run_one(mname, migrator, fake=fake, force=fake))
-            if name and name == mname:
-                break
-
-        return done
 
     def rollback(self):
         """Rollback the latest migration."""
-        done = self.done
-        if not done:
-            msg = "There is nothing to rollback"
-            raise RuntimeError(msg)
+        with lock_migrations(self.database, self.migrate_table):
+            done = self.done
+            if not done:
+                msg = "There is nothing to rollback"
+                raise RuntimeError(msg)
 
-        name = done[-1]
-        migrator = self.migrator
-        self.run_one(name, migrator, fake=False, downgrade=True)
-        self.logger.warning("Downgraded migration: %s", name)
+            name = done[-1]
+            migrator = self.migrator
+            self.run_one(name, migrator, fake=False, downgrade=True)
+            self.logger.warning("Downgraded migration: %s", name)
 
 
 class Router(BaseRouter):
     """File system router."""
 
-    filemask = re.compile(r"[\d]{3}_[^\.]+\.py$")
+    filemask = re.compile(r"\d+_[^.]+\.py$")
 
     def __init__(
         self,
@@ -260,24 +314,25 @@ class Router(BaseRouter):
     ):
         """Initialize the router."""
         super(Router, self).__init__(database, **kwargs)
-        if migrate_dir is None:
-            migrate_dir = DEFAULT_MIGRATE_DIR
-        elif isinstance(migrate_dir, str):
+        if isinstance(migrate_dir, str):
             migrate_dir = Path(migrate_dir)
-        self.migrate_dir = migrate_dir
+        self.migrate_dir = migrate_dir or Path.cwd() / "migrations"
 
     @property
     def todo(self):
         """Scan migrations in file system."""
         if not self.migrate_dir.exists():
             self.logger.warning("Migration directory: %s does not exist.", self.migrate_dir)
-            self.migrate_dir.mkdir(parents=True)
-        return sorted(f.stem for f in Path.iterdir(self.migrate_dir) if self.filemask.match(f.name))
+            self.migrate_dir.mkdir(parents=True, exist_ok=True)
+        return sorted(
+            (f.stem for f in Path.iterdir(self.migrate_dir) if self.filemask.match(f.name)),
+            key=lambda name: int(name.split("_", 1)[0]),
+        )
 
     def compile(self, name, migrate="", rollback="", num=None) -> str:
         """Create a migration."""
         if num is None:
-            num = len(self.todo)
+            num = max((int(name.split("_", 1)[0]) for name in self.todo), default=0)
 
         name = "{:03}_".format(num + 1) + name
         filename = name + ".py"
@@ -297,12 +352,12 @@ class Router(BaseRouter):
             exec(code, scope, None)
             return scope.get("migrate", void), scope.get("rollback", void)
 
-    def clear(self):
+    def clear(self, keep: str | None = None):
         """Remove migrations from fs."""
-        super(Router, self).clear()
         for name in self.todo:
-            path = self.migrate_dir / (name + ".py")
-            path.unlink()
+            if name != keep:
+                (self.migrate_dir / (name + ".py")).unlink()
+        super(Router, self).clear()
 
 
 class ModuleRouter(BaseRouter):

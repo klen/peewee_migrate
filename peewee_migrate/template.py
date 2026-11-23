@@ -27,6 +27,8 @@ Some examples (model - class or model name)::
     > migrator.drop_not_null(model, *field_names)
     > migrator.drop_constraints(model, *constraints)
 
+Note: a model created with migrator.create_model() can only be changed in a later migration.
+
 \"\"\"
 
 from contextlib import suppress
