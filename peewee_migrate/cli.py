@@ -14,6 +14,8 @@ from .models import MIGRATE_TABLE
 from .router import Router
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import peewee as pw
 
     from peewee_migrate.types import TParams
@@ -26,11 +28,13 @@ def get_router(
     database: str | pw.Database | pw.Proxy | None = None,
     migratetable: str = MIGRATE_TABLE,
     verbose: int = 0,
+    ignore: Iterable[str] | None = None,
 ) -> Router:
     """Load and initialize a router."""
     config: TParams = {}
     logging_level: str = VERBOSE[min(verbose, len(VERBOSE) - 1)]
-    ignore = schema = None
+    ignore = list(ignore) if ignore else None
+    schema = None
 
     if directory:
         directory = Path(directory)
@@ -40,7 +44,8 @@ def get_router(
                 code = compile(cfg.read(), "<string>", "exec", dont_inherit=True)
                 exec(code, config, config)
                 database = config.get("DATABASE", database)
-                ignore = config.get("IGNORE", ignore)
+                # IGNORE from conf.py adds to --ignore, both name tables to skip.
+                ignore = [*(ignore or ()), *(config.get("IGNORE") or ())] or None
                 schema = config.get("SCHEMA", schema)
                 migratetable = config.get("MIGRATE_TABLE", migratetable)
                 logging_level = config.get("LOGGING_LEVEL", logging_level).upper()
@@ -113,6 +118,11 @@ def migrate(  # noqa: PLR0913
         "Current directory will be recursively scanned by default."
     ),
 )
+@click.option(
+    "--ignore",
+    multiple=True,
+    help="Model name to ignore during autoscan. Repeat for multiple models.",
+)
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
@@ -126,9 +136,10 @@ def create(  # noqa: PLR0913
     *,
     auto: bool = False,
     auto_source: str | None = None,
+    ignore: tuple[str, ...] = (),
 ) -> None:
     """Create a migration."""
-    router: Router = get_router(directory, database, migratetable, verbose)
+    router: Router = get_router(directory, database, migratetable, verbose, ignore)
     router.create(name or "auto", auto=auto_source if auto and auto_source else auto)
 
 
@@ -161,12 +172,12 @@ def rollback(
         router.rollback()
 
 
-@cli.command()
+@cli.command(name="list")
 @click.option("--database", default=None, help="Database connection")
 @click.option("--directory", default="migrations", help="Directory where migrations are stored")
 @click.option("--migratetable", default=MIGRATE_TABLE, help="Migration table.")
 @click.option("-v", "--verbose", count=True)
-def list(  # noqa: A001
+def list_migrations(
     database: str | None = None,
     directory: str | None = None,
     migratetable: str = MIGRATE_TABLE,

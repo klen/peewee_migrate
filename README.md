@@ -80,14 +80,15 @@ The new file has an empty `migrate()` and `rollback()` for you to fill in. Add
 ```console
 $ pw_migrate create --database=sqlite:///app.db --auto add_user
 $ pw_migrate create --database=sqlite:///app.db --auto --auto-source=myapp.models add_user
+$ pw_migrate create --database=sqlite:///app.db --auto --ignore=cache_entry add_user
 ```
 
 `--auto` replays the migrations applied so far, diffs that schema against the
 models it can import, and writes the resulting operations. With no
 `--auto-source`, the current directory is scanned recursively for packages;
-`--auto-source` points at one module path. Tables listed in `IGNORE` are skipped.
-When there is nothing to change, no file is written and the command says
-`No changes found.`
+`--auto-source` points at one module path. Tables listed in `IGNORE` are skipped,
+and `--ignore` adds a name to that list; repeat it for several models. When there
+is nothing to change, no file is written and the command says `No changes found.`
 
 ### Applying migrations
 
@@ -156,16 +157,16 @@ from peewee_migrate import Router
 
 router = Router(SqliteDatabase("test.db"))
 
-router.create("add_user")               # empty 001_add_user.py
-router.create(auto="myapp.models")      # generated from your model classes
-router.run()                            # apply everything pending
-router.run("002_add_user")              # apply up to the given migration
-router.rollback()                       # undo the last one
-router.merge()                          # squash into 001_initial.py
+router.create("add_user")  # empty 001_add_user.py
+router.create(auto="myapp.models")  # generated from your model classes
+router.run()  # apply everything pending
+router.run("002_add_user")  # apply up to the given migration
+router.rollback()  # undo the last one
+router.merge()  # squash into 001_initial.py
 
-router.todo      # names found on disk
-router.done      # names recorded in the database
-router.diff      # names still pending
+router.todo  # names found on disk
+router.done  # names recorded in the database
+router.diff  # names still pending
 ```
 
 `Router` also takes `migrate_dir`, `migrate_table`, `ignore` (table names to skip

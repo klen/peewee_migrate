@@ -19,6 +19,7 @@
 	* test: run the migration round trip against real postgres and mysql in CI
 	* refactor: annotate the whole package, replace 58 blanket type ignores with 17 precise ones
 	* fix: keep peewee's default bookkeeping in sync so change_fields works on peewee 4.5
+	* feat: add a repeatable --ignore option to create (#165)
 	* fix: carry field constraints (Check, SQL) into generated migrations
 	* build: ship the tests in the sdist and widen the uv-build pin
 	* test: cover locking, module routers, backend selection, merge and the cli error paths

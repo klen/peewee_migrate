@@ -147,3 +147,60 @@ def test_merge(tmp_path):
 
     assert result.exit_code == 0
     assert [path.name for path in migrate_dir.iterdir()] == ["001_initial.py"]
+
+
+@pytest.mark.parametrize("ignored", [(), ("color",), ("color", "pet")])
+def test_create_auto_ignore(tmp_path, ignored):
+    migrate_dir = tmp_path / "migrations"
+    db_url = "sqlite:///%s" % (tmp_path / "app.db")
+    args = [
+        "create",
+        f"--directory={migrate_dir}",
+        f"--database={db_url}",
+        "--auto",
+        "--auto-source=tests.models",
+        *[f"--ignore={name}" for name in ignored],
+        "auto",
+    ]
+
+    result = runner.invoke(cli, args)
+
+    assert result.exit_code == 0, result.output
+    [written] = migrate_dir.iterdir()
+    content = written.read_text()
+    assert "class Person(pw.Model)" in content
+    assert ("class Color" in content) is not ("color" in ignored)
+    assert ("class Pet" in content) is not ("pet" in ignored)
+
+
+def test_create_auto_ignore_adds_to_conf(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    migrate_dir.mkdir()
+    (migrate_dir / "conf.py").write_text('IGNORE = ["color"]\n')
+    db_url = "sqlite:///%s" % (tmp_path / "app.db")
+
+    result = runner.invoke(
+        cli,
+        [
+            "create",
+            f"--directory={migrate_dir}",
+            f"--database={db_url}",
+            "--auto",
+            "--auto-source=tests.models",
+            "--ignore=pet",
+            "auto",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    content = (migrate_dir / "001_auto.py").read_text()
+    assert "class Person(pw.Model)" in content
+    assert "class Color" not in content
+    assert "class Pet" not in content
+
+
+def test_get_router_passes_ignore():
+    database = pw.SqliteDatabase(":memory:")
+    router = get_router(None, database, ignore=["color", "pet"])
+
+    assert router.ignore == ["color", "pet"]
