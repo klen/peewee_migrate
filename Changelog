@@ -1,3 +1,23 @@
+2026-11-23
+
+	* feat: lock migrations between processes (pg_advisory_lock, GET_LOCK; 60s wait)
+	* feat: add Migrator.reset() and Router.clear(keep=...)
+	* fix: drop NOT NULL when change_fields makes a column nullable (postgres)
+	* fix: read the default migrations directory at runtime instead of at import
+	* fix: keep migration history and files when merge fails
+	* fix: don't swallow errors raised by a migrations conf.py
+	* fix: raise on unknown columns in add_index / drop_index
+	* fix: number and sort migrations above 999
+	* fix: keep a separate migration history per router
+	* fix: drop the right index when change_fields removes unique
+	* fix: raise instead of running every migration on an unknown --name
+	* fix: fail fast when a model is created and altered in the same migration
+	* fix: make the migration name unique and survive a concurrent start
+	* fix: accept more than three -v flags
+	* fix: stop growing sys.path on every create --auto
+	* test: cover locking, conf.py errors, a failed merge, unknown columns
+	* test: run the migration round trip against real postgres and mysql in CI
+
 2026-08-24
 
 	* feat: support peewee 4.4+

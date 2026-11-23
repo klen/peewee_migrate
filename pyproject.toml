@@ -4,7 +4,7 @@ version = "2.3.0"
 description = "Support for migrations in Peewee ORM"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 requires-python = ">=3.11,<4"
-readme = "README.rst"
+readme = "README.md"
 license = "MIT"
 keywords = ["peewee", "migrations", "orm"]
 classifiers = [

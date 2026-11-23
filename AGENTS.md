@@ -52,6 +52,10 @@ Repository guidance for coding agents working in `peewee-migrate`.
 - Single test class/method style node id: `uv run pytest path/to_file.py::TestClass::test_name`.
 - Filter by keyword: `uv run pytest -k "router and not merge"`.
 - Stop after first failure: `uv run pytest -x tests/test_router.py::test_router`.
+- Real database checks (`tests/test_databases.py`) are skipped unless a server is given:
+  `PEEWEE_MIGRATE_PG=postgresql://user:pass@127.0.0.1:5432/postgres PEEWEE_MIGRATE_MYSQL=mysql://root:root@127.0.0.1:3306/test uv run pytest tests/test_databases.py`,
+  for example with `docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=pass postgres:17-alpine`
+  and `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=test mysql:8.4`.
 
 ## Pre-commit and Commit Rules
 
