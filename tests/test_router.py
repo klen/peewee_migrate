@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 from unittest import mock
 
 import peewee as pw
 import pytest
 from playhouse.db_url import connect
+from playhouse.migrate import MySQLDatabase
 
 from peewee_migrate.cli import get_router
-from peewee_migrate.router import load_models, lock_migrations
+from peewee_migrate.router import ModuleRouter, Router, load_models, lock_migrations, void
 
 from .test_autodiscover.models1 import one_models
 
@@ -307,3 +310,152 @@ def test_run_one_error_propagates(tmp_path):
 
     with pytest.raises(RuntimeError, match="boom"):
         router.run()
+
+
+def test_router_rejects_invalid_arguments():
+    with pytest.raises(TypeError, match="Invalid database"):
+        Router("not a database")
+
+    with pytest.raises(TypeError, match="Invalid migrator_class"):
+        Router(pw.SqliteDatabase(":memory:"), migrator_class=object)
+
+
+def test_create_auto_import_error(tmp_path):
+    router = get_router(str(tmp_path / "migrations"), "sqlite:///:memory:")
+
+    assert router.create("broken", auto="does.not.exist") is None
+    assert router.todo == []
+
+
+def test_create_auto_respects_ignore(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    router = Router(pw.SqliteDatabase(":memory:"), migrate_dir=migrate_dir, ignore=["color"])
+
+    name = router.create("auto", auto="tests.models")
+    content = (migrate_dir / f"{name}.py").read_text()
+
+    assert "class Person(pw.Model)" in content
+    assert "class Color" not in content
+
+
+def test_merge_without_models(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    router = get_router(str(migrate_dir), pw.SqliteDatabase(":memory:"))
+
+    router.merge()
+
+    assert router.todo == []
+
+
+def test_rollback_without_migrations(router):
+    with pytest.raises(RuntimeError, match="nothing to rollback"):
+        router.rollback()
+
+
+def test_lock_migrations_mysql(monkeypatch):
+    database = MySQLDatabase("app")
+    queries = []
+
+    class Cursor:
+        def fetchone(self):
+            return (1,)
+
+    def execute_sql(sql, params=None):
+        queries.append((sql, params))
+        return Cursor()
+
+    monkeypatch.setattr(database, "execute_sql", execute_sql)
+
+    with lock_migrations(database, "migratehistory"):
+        pass
+
+    assert queries == [
+        ("SELECT GET_LOCK(%s, %s)", ("app:migratehistory", 60)),
+        ("SELECT RELEASE_LOCK(%s)", ("app:migratehistory",)),
+    ]
+
+
+def test_lock_migrations_mysql_is_busy(monkeypatch):
+    database = MySQLDatabase("app")
+
+    class Cursor:
+        def fetchone(self):
+            return (0,)
+
+    monkeypatch.setattr(database, "execute_sql", lambda sql, params=None: Cursor())
+
+    with (
+        pytest.raises(RuntimeError, match="Could not acquire the migration lock"),
+        lock_migrations(database, "migratehistory"),
+    ):
+        pass
+
+
+def test_module_router_reads_migrations():
+    module = ModuleType("migrations")
+    migration = ModuleType("001_create")
+    migration.migrate = lambda migrator, database, **kwargs: None
+    module.__dict__["001_create"] = migration
+
+    router = ModuleRouter(pw.SqliteDatabase(":memory:"), migrate_module=module)
+
+    assert router.read("001_create") == (migration.migrate, void)
+
+
+@pytest.mark.parametrize("dburl", ["postgres:///fake"])
+def test_lock_migrations_postgres_waits(dburl, monkeypatch):
+    database = connect(dburl)
+    answers = iter([(False,), (True,)])
+    monkeypatch.setattr(database.cursor(), "fetchone", lambda *args: next(answers))
+    monkeypatch.setattr("peewee_migrate.router.time.sleep", lambda seconds: None)
+
+    with lock_migrations(database, "migratehistory"):
+        pass
+
+    queries = database.cursor().queries
+    assert sum("pg_try_advisory_lock" in query for query in queries) == 2
+
+
+def test_create_auto_without_changes(tmp_path, monkeypatch):
+    migrate_dir = tmp_path / "migrations"
+    router = Router(pw.SqliteDatabase(":memory:"), migrate_dir=migrate_dir)
+    monkeypatch.chdir(tmp_path)
+
+    assert router.create("auto", auto=True) is None
+    assert router.todo == []
+
+
+def test_run_without_pending_migrations(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    router = get_router(str(migrate_dir), "sqlite:///:memory:")
+
+    assert router.run() == []
+
+
+def test_router_accepts_a_string_directory(tmp_path):
+    router = Router(pw.SqliteDatabase(":memory:"), migrate_dir=str(tmp_path / "migrations"))
+
+    assert isinstance(router.migrate_dir, Path)
+
+
+def test_module_router_imports_a_module_path():
+    router = ModuleRouter(pw.SqliteDatabase(":memory:"), migrate_module="tests.models")
+
+    assert router.migrate_module.__name__ == "tests.models"
+
+
+def test_load_models_skips_broken_modules(monkeypatch):
+    real_import = import_module
+    broken = "tests.test_autodiscover.models1.one_models"
+
+    def fake_import(name, *args):
+        if name == broken:
+            raise ImportError(name)
+        return real_import(name, *args)
+
+    monkeypatch.setattr("peewee_migrate.router.import_module", fake_import)
+
+    models = load_models("tests.test_autodiscover")
+
+    assert models
+    assert all(model.__module__ != broken for model in models)

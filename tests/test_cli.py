@@ -113,3 +113,37 @@ def test_fake(dir_option, db_option, migrations, router):
         assert mgr in result.output
 
     # TODO: Find a way of testing fake. This is unclear why the following fails.
+
+
+def test_get_router_without_database():
+    with pytest.raises(SystemExit):
+        get_router()
+
+
+def test_list_shows_applied(dir_option, db_option, migrations):
+    runner.invoke(cli, ["migrate", dir_option, db_option, "--name=%s" % migrations[0]])
+
+    result = runner.invoke(cli, ["list", dir_option, db_option])
+
+    assert result.exit_code == 0
+    assert "- [x] %s" % migrations[0] in result.output
+
+
+def test_merge(tmp_path):
+    migrate_dir = tmp_path / "migrations"
+    migrate_dir.mkdir()
+    (migrate_dir / "001_create.py").write_text(
+        "import peewee as pw\n"
+        "def migrate(migrator, database, **kwargs):\n"
+        "    @migrator.create_model\n"
+        "    class Thing(pw.Model):\n"
+        "        name = pw.CharField()\n"
+    )
+    db_url = "sqlite:///%s" % (tmp_path / "app.db")
+    migrate = runner.invoke(cli, ["migrate", f"--directory={migrate_dir}", f"--database={db_url}"])
+    assert migrate.exit_code == 0
+
+    result = runner.invoke(cli, ["merge", f"--directory={migrate_dir}", f"--database={db_url}"])
+
+    assert result.exit_code == 0
+    assert [path.name for path in migrate_dir.iterdir()] == ["001_initial.py"]

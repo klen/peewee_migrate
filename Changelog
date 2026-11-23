@@ -17,7 +17,9 @@
 	* fix: stop growing sys.path on every create --auto
 	* test: cover locking, conf.py errors, a failed merge, unknown columns
 	* test: run the migration round trip against real postgres and mysql in CI
-	* refactor: annotate the whole package, replace 58 blanket type ignores with 13 precise ones
+	* refactor: annotate the whole package, replace 58 blanket type ignores with 17 precise ones
+	* fix: keep peewee's default bookkeeping in sync so change_fields works on peewee 4.5
+	* test: cover locking, module routers, backend selection, merge and the cli error paths
 
 2026-08-24
 

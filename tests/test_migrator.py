@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import peewee as pw
 import pytest
+from playhouse.migrate import MySQLDatabase
 from playhouse.test_utils import count_queries
 
 from peewee_migrate import Migrator
@@ -397,3 +398,160 @@ def test_change_field_default(migrator: Migrator, database):
         'ALTER TABLE "testtable" ALTER COLUMN "field_with_default" SET NOT NULL',
         [],
     )
+
+
+def test_change_foreign_key(migrator: Migrator, models):
+    Customer, Order = models
+
+    migrator.change_fields(Order, customer=pw.ForeignKeyField(Customer, on_delete="CASCADE"))
+
+    [dropped, added] = migrator.__ops__
+    assert dropped.fn.__name__ == "drop_foreign_key_constraint"
+    assert dropped.args == ("order", "customer_id")
+    assert added.fn.__name__ == "add_foreign_key_constraint"
+    assert added.args == ("order", "customer_id", "customer", "id", "CASCADE", "RESTRICT")
+
+
+def test_change_foreign_key_to_plain_field(migrator: Migrator):
+    migrator.change_fields("order", customer=pw.IntegerField(column_name="customer_id"))
+
+    [dropped, changed] = migrator.__ops__
+    assert dropped.fn.__name__ == "drop_foreign_key_constraint"
+    assert changed.fn.__name__ == "change_column"
+    assert not isinstance(migrator.orm["order"]._meta.fields["customer"], pw.ForeignKeyField)
+
+
+def test_add_not_null(migrator: Migrator):
+    order = migrator.orm["order"]
+    migrator.drop_not_null("order", "number")
+    migrator()
+    assert order._meta.fields["number"].null
+
+    migrator.add_not_null("order", "number")
+    migrator()
+
+    assert order._meta.fields["number"].null is False
+
+
+def test_add_and_drop_constraints(migrator: Migrator):
+    with migrator.fake():
+        migrator.add_constraint("order", "uid_check", "CHECK (uid <> '')")
+        migrator.drop_constraints("order", "uid_check")
+
+        [added, dropped] = migrator.__ops__
+        assert added.fn.__name__ == "add_constraint"
+        assert added.args == ("order", "uid_check", "CHECK (uid <> '')")
+        assert dropped.fn.__name__ == "drop_constraint"
+        assert dropped.args == ("order", "uid_check")
+
+
+def test_unsupported_database():
+    with pytest.raises(ValueError, match="Unsupported database"):
+        Migrator(pw.Database("test"))
+
+
+def test_migrator_accepts_a_proxy():
+    database = pw.SqliteDatabase(":memory:")
+    proxy = pw.Proxy()
+    proxy.initialize(database)
+    migrator = Migrator(proxy)
+
+    assert migrator.orm is not None
+    migrator.create_model(type("Item", (pw.Model,), {}))
+    migrator()
+    assert "item" in database.get_tables()
+
+
+def test_unknown_model_raises(migrator: Migrator):
+    with pytest.raises(ValueError, match="Model nope not found"):
+        migrator.add_fields("nope", name=pw.CharField())
+
+
+def test_run_python_callable(migrator: Migrator):
+    calls = []
+
+    migrator.run(calls.append, "done")
+    assert calls == []
+
+    migrator()
+    assert calls == ["done"]
+
+
+def test_change_field_column_name(migrator: Migrator, models):
+    _, Order = models
+
+    migrator.change_fields(Order, uid=pw.CharField(column_name="order_uid"))
+
+    renamed = [op for op in migrator.__ops__ if op.fn.__name__ == "rename_column"]
+    assert [op.args for op in renamed] == [("order", "uid", "order_uid")]
+
+
+def test_change_field_to_unique(migrator: Migrator, models):
+    _, Order = models
+
+    migrator.change_fields(Order, number=pw.CharField(unique=True))
+
+    [added] = [op for op in migrator.__ops__ if op.fn.__name__ == "add_index"]
+    assert added.args == ("order", ("number",), True)
+
+
+def test_drop_single_column_index(migrator: Migrator, models):
+    _, Order = models
+    database = migrator.__database__
+
+    migrator.add_index("order", "number")
+    migrator()
+    assert Order._meta.fields["number"].index
+    assert "order_number" in [index.name for index in database.get_indexes("order")]
+
+    migrator.drop_index("order", "number")
+    migrator()
+
+    assert Order._meta.fields["number"].index is False
+    assert "order_number" not in [index.name for index in database.get_indexes("order")]
+
+
+@pytest.mark.parametrize(
+    ("database", "expected"),
+    [
+        (pw.SqliteDatabase(":memory:"), "SqliteMigrator"),
+        (MySQLDatabase("test"), "MySQLMigrator"),
+        (pw.PostgresqlDatabase("test"), "PostgresqlMigrator"),
+    ],
+)
+def test_backend_selection(database, expected):
+    assert type(Migrator(database).__migrator__).__name__ == expected
+
+
+def test_add_callable_default(migrator: Migrator):
+    migrator.add_default("order", "number", lambda: "generated")
+    meta = migrator.orm["order"]._meta
+
+    assert meta.fields["number"].default() == "generated"
+    assert [name for name, _ in meta._default_callable_list if name == "number"] == ["number"]
+
+    migrator()
+    migrator.change_fields("order", number=pw.CharField(null=True))
+    migrator()
+
+    assert meta.fields["number"].null
+
+
+def test_add_default_updates_peewee_bookkeeping(migrator: Migrator):
+    migrator.add_default("order", "number", "generated")
+    meta = migrator.orm["order"]._meta
+
+    assert meta._default_by_name["number"] == "generated"
+
+    migrator()
+    # peewee 4.5 fails here if the bookkeeping above is missing.
+    migrator.change_fields("order", number=pw.CharField(null=True))
+    migrator()
+
+    assert meta.fields["number"].null
+
+
+def test_model_lookup_by_class_name(migrator: Migrator):
+    migrator.add_fields("Order", extra=pw.CharField(null=True))
+
+    assert "extra" in migrator.orm["order"]._meta.fields

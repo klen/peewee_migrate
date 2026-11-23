@@ -480,3 +480,16 @@ def test_diff_many():
 
     changes = diff_many(list(migrator), [], migrator=migrator)
     assert len(changes) == 2
+
+
+def test_diff_model_requires_the_same_table():
+    class First(pw.Model):
+        class Meta:
+            table_name = "first"
+
+    class Second(pw.Model):
+        class Meta:
+            table_name = "second"
+
+    with pytest.raises(ValueError, match="different table names"):
+        diff_model(First, Second)

@@ -399,6 +399,17 @@ class Migrator:
         meta = model._meta
         field = meta.fields[name]
         meta.defaults[field] = field.default = default
+        # peewee keeps its own default bookkeeping and remove_field() fails without it.
+        meta._default_callable_list = [  # type: ignore[missing-attribute]
+            (field_name, func)
+            for field_name, func in meta._default_callable_list  # type: ignore[missing-attribute]
+            if field_name != field.name
+        ]
+        if callable(default):
+            meta._default_callable_list.append((field.name, default))  # type: ignore[missing-attribute]
+        else:
+            meta._default_by_name[field.name] = default  # type: ignore[missing-attribute]
+
         self.__ops__.append(self.__migrator__.apply_default(meta.table_name, name, field))
         return model
 
