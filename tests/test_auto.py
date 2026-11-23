@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import textwrap
 from enum import Enum
 from pathlib import Path
 
@@ -16,8 +17,10 @@ from playhouse.postgres_ext import (
     TSVectorField,
 )
 
+from peewee_migrate import Router
 from peewee_migrate.auto import (
     compare_fields,
+    create_fields,
     diff_many,
     diff_model,
     field_to_code,
@@ -493,3 +496,52 @@ def test_diff_model_requires_the_same_table():
 
     with pytest.raises(ValueError, match="different table names"):
         diff_model(First, Second)
+
+
+def test_field_to_code_constraints():
+    class Test(pw.Model):
+        checked = pw.CharField(constraints=[pw.Check("checked in ('a', 'b')")])
+
+    code = field_to_code(Test.checked)
+
+    assert code.startswith("checked = pw.CharField(")
+    assert "constraints=[pw.SQL(\"CHECK (checked in ('a', 'b'))\")]" in code
+
+
+def test_create_fields_keeps_constraints():
+    class Test(pw.Model):
+        class Meta:
+            table_name = "thing"
+
+        checked = pw.CharField(constraints=[pw.Check("checked <> ''")])
+
+    assert "constraints=[pw.SQL(\"CHECK (checked <> '')\")]" in create_fields(Test, Test.checked)
+
+
+def test_generated_migration_enforces_constraints(tmp_path):
+    class Checked(pw.Model):
+        status = pw.CharField(constraints=[pw.Check("status in ('new', 'done')")])
+
+    migrate_dir = tmp_path / "migrations"
+    migrate_dir.mkdir()
+    (migrate_dir / "001_create.py").write_text(
+        "import peewee as pw\n\n\n"
+        "def migrate(migrator, database, **kwargs):\n"
+        + textwrap.indent("@migrator.create_model\n" + model_to_code(Checked), "    ")
+    )
+    db = pw.SqliteDatabase(":memory:")
+
+    assert Router(db, migrate_dir=migrate_dir).run() == ["001_create"]
+
+    class Row(pw.Model):
+        status = pw.CharField()
+
+        class Meta:
+            database = db
+            table_name = "checked"
+
+    Row.insert(status="new").execute()
+    with pytest.raises(pw.IntegrityError):
+        Row.insert(status="bad").execute()
+
+    Row.drop_table(safe=True)

@@ -11,6 +11,8 @@ from playhouse.reflection import Column as VanilaColumn
 from peewee_migrate.utils import model_fields_gen
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from .migrator import Migrator
     from .types import TModelType, TParams
 
@@ -124,6 +126,9 @@ class Column(VanilaColumn):
         params = super(Column, self).get_field_parameters()
         params.pop("backref", None)
 
+        if self.field.constraints:
+            params["constraints"] = constraints_to_code(self.field.constraints)
+
         if self.field.default is not None and not callable(self.field.default):
             value = self.field.db_value(self.field.default)
             if isinstance(value, pw.WrappedNode):
@@ -137,6 +142,7 @@ class Column(VanilaColumn):
             params["index"] = bool(params.pop("index", False)) or params["unique"]
 
             params.pop("default", None)
+            params.pop("constraints", None)
             params.pop("on_delete", None)
             params.pop("on_update", None)
 
@@ -440,6 +446,19 @@ def drop_index(idx: pw.ModelIndex) -> str:
     meta = idx._model._meta  # type: ignore[missing-attribute]
     names = ", ".join(f"'{name}'" for name in _index_fields(idx))
     return f"migrator.drop_index('{meta.table_name}', {names})"
+
+
+def constraints_to_code(constraints: Iterable[pw.Node]) -> str:
+    """Render field constraints back to python, peewee keeps them only as SQL nodes."""
+    clauses = []
+    for constraint in constraints:
+        sql, params = pw.Context().sql(constraint).query()
+        if params:
+            raise TypeError(
+                "Cannot generate migration for constraint %r: it carries parameters" % (constraint,)
+            )
+        clauses.append("pw.SQL(%r)" % sql)
+    return "[%s]" % ", ".join(clauses)
 
 
 def find_field_type(field: pw.Field) -> type[pw.Field]:
