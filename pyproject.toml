@@ -31,7 +31,14 @@ pw_migrate = "peewee_migrate.cli:cli"
 pw-migrate = "peewee_migrate.cli:cli"
 
 [dependency-groups]
-dev = ["pre-commit", "psycopg2-binary", "pytest", "ruff", "pyrefly"]
+dev = [
+    "pre-commit",
+    "psycopg2-binary",
+    "pytest",
+    "ruff",
+    "pyrefly",
+    "pymysql>=1.2.4",
+]
 
 [build-system]
 requires = ["uv_build>=0.10.2,<0.11.0"]
@@ -59,6 +66,7 @@ project-excludes = ["tests", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 addopts = "-svx"
+markers = ["real_db: needs a live database from PEEWEE_MIGRATE_PG or PEEWEE_MIGRATE_MYSQL"]
 
 [tool.bumpversion]
 current_version = "2.3.0"

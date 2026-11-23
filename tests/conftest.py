@@ -64,6 +64,8 @@ def database(router):
 
 
 @pytest.fixture(autouse=True)
-def _patch_postgres(dburl):
-    # Monkey patch psycopg2 connect
-    psycopg2.connect = postgres.MockConnection
+def _patch_postgres(request, monkeypatch):
+    # Test against a mocked connection, except when a real database is configured.
+    if request.node.get_closest_marker("real_db"):
+        return
+    monkeypatch.setattr(psycopg2, "connect", postgres.MockConnection)
